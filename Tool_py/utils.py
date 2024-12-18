@@ -6,6 +6,17 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir,'func_result')))
 from extract_rust_func import extract_rust
+import shutil
+
+import signal
+def cleanup(tmp_dir):
+    rm_tmp_dir = os.path.abspath(tmp_dir)
+    def handler(sig, frame):
+        print("Caught signal, cleaning up...")
+        if os.path.exists(rm_tmp_dir):
+            shutil.rmtree(rm_tmp_dir)
+        sys.exit(0)
+    return handler
 
 def debug(*args, **kwargs):
     if 'DEBUG' in os.environ:

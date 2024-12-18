@@ -13,6 +13,7 @@ from prompts import generate_extra_prompt,fix_extra_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
 from src.data_manager import DataManager
+
 def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False):
     if os.path.exists(os.path.join(output_dir, 'results.json')):
         with open(os.path.join(output_dir, 'results.json'), 'r') as file:
@@ -189,7 +190,7 @@ if __name__ == "__main__":
     source_files = {}
     include_dict = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict)
-    logger = logger_init(os.path.join(tmp_dir,'app.log'))
+    logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
@@ -220,6 +221,5 @@ if __name__ == "__main__":
     
     data_manager = DataManager(source_path,include_dict=include_dict) 
 
-    
 
     post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only)

@@ -36,11 +36,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
     tmp_dir = os.path.join(tmp_dir, test_source_name+'_'+func_name)
     os.makedirs(tmp_dir, exist_ok=True)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    hours, remainder = divmod(elapsed_time, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    logger.info(f"Total time taken for conversion: {int(hours):02}:{int(minutes):02}:{int(seconds):02} seconds, Total retry count: {total_retry_count}, Total regenerate count: {total_regenerate_count}, Total error count:{total_error_count}")
     funcs_child = funcs_childs[test_source_name]
 
     max_history_length = 0
@@ -51,9 +46,15 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     else:
         raise ValueError("source_name is not correct")
 
-    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests']:
+    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
         return
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    hours, remainder = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    logger.info(f"Total time taken for conversion: {int(hours):02}:{int(minutes):02}:{int(seconds):02} seconds, Total retry count: {total_retry_count}, Total regenerate count: {total_regenerate_count}, Total error count:{total_error_count}")
 
     with lock:
         if source_name not in results:
@@ -372,33 +373,92 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     shutil.rmtree(tmp_dir)
     return  results, all_error_funcs_content, once_retry_count_dict
 
-def process_test_source_name(test_source_name, funcs, source_names, funcs_childs, data_manager, results, logger, llm_model, tmp_dir, start_time, all_error_funcs_content, once_retry_count_dict, lock, output_dir,params):
+def process_test_source_name(test_source_name, funcs, source_names, funcs_childs, data_manager, shared_results, shared_all_error_funcs_content, shared_once_retry_count_dict, logger, llm_model, tmp_dir, start_time, lock, output_dir, params):
     if test_source_name not in source_names:
         return
+
+    checkpoint_interval = params['checkpoint_interval']
+    func_counter = 0
+
+    local_results = copy.deepcopy(shared_results)
+    local_all_error_funcs_content = copy.deepcopy(shared_all_error_funcs_content)
+    local_once_retry_count_dict = copy.deepcopy(shared_once_retry_count_dict)
 
     with tqdm(funcs.items(), desc=f"{test_source_name}") as pbar:
         for func_name, depth in pbar:
             pbar.set_postfix(func_name=func_name) 
 
             result = process_func(
-                test_source_name, func_name, depth, start_time, source_names, funcs_childs, copy.deepcopy(data_manager), copy.deepcopy(results), logger, llm_model, tmp_dir,  copy.deepcopy(all_error_funcs_content), copy.deepcopy(once_retry_count_dict), funcs, lock,params
+                test_source_name, func_name, depth, start_time, source_names, funcs_childs, copy.deepcopy(data_manager), local_results, logger, llm_model, tmp_dir, local_all_error_funcs_content, local_once_retry_count_dict, funcs, lock, params
             )
-            with lock:
-                if result is not None:
-                    updated_results, updated_all_error_funcs_content, updated_once_retry_count_dict = result
-                    update_nested_dict(results, updated_results)
-                    update_nested_dict(all_error_funcs_content, updated_all_error_funcs_content)
-                    update_nested_dict(once_retry_count_dict, updated_once_retry_count_dict)
-                    with open(os.path.join(output_dir, 'results.json'), 'w') as f:
-                        json.dump(results, f, indent=4)
-                    with open(os.path.join(output_dir, 'once_retry_count_dict.json'), 'w') as f:
-                        json.dump(once_retry_count_dict, f, indent=4)
-                    with open(os.path.join(output_dir, 'all_error_funcs_content.json'), 'w') as f:
-                        json.dump(all_error_funcs_content, f, indent=4, ensure_ascii=False)
+            if result is not None:
+                updated_results, updated_all_error_funcs_content, updated_once_retry_count_dict = result
+                update_nested_dict(local_results, updated_results)
+                update_nested_dict(local_all_error_funcs_content, updated_all_error_funcs_content)
+                update_nested_dict(local_once_retry_count_dict, updated_once_retry_count_dict)
+                func_counter += 1
 
-    return results, all_error_funcs_content, once_retry_count_dict
+                # 保存检查点
+                if func_counter % checkpoint_interval == 0:
+                    with lock:
+                        update_nested_dict(shared_results, local_results)
+                        update_nested_dict(shared_all_error_funcs_content, local_all_error_funcs_content)
+                        update_nested_dict(shared_once_retry_count_dict, local_once_retry_count_dict)
+                        save_checkpoint(shared_results, shared_once_retry_count_dict, shared_all_error_funcs_content, output_dir)
 
-def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir, all_error_funcs_content, once_retry_count_dict, test_names,params):
+    # 最后保存一次
+    with lock:
+        update_nested_dict(shared_results, local_results)
+        update_nested_dict(shared_all_error_funcs_content, local_all_error_funcs_content)
+        update_nested_dict(shared_once_retry_count_dict, local_once_retry_count_dict)
+        save_checkpoint(shared_results, shared_once_retry_count_dict, shared_all_error_funcs_content, output_dir)
+
+    return local_results, local_all_error_funcs_content, local_once_retry_count_dict
+
+
+def save_checkpoint(results, once_retry_count_dict, all_error_funcs_content, output_dir):
+    with open(os.path.join(output_dir, 'results.json'), 'w') as f:
+        json.dump(results, f, indent=4)
+    with open(os.path.join(output_dir, 'once_retry_count_dict.json'), 'w') as f:
+        json.dump(once_retry_count_dict, f, indent=4)
+    with open(os.path.join(output_dir, 'all_error_funcs_content.json'), 'w') as f:
+        json.dump(all_error_funcs_content, f, indent=4, ensure_ascii=False)
+
+    global total_retry_count, total_regenerate_count, total_error_count
+    checkpoint = {
+        'total_retry_count': total_retry_count,
+        'total_regenerate_count': total_regenerate_count,
+        'total_error_count': total_error_count
+    }
+    with open(os.path.join(output_dir, 'checkpoint.json'), 'w') as f:
+        json.dump(checkpoint, f, indent=4, ensure_ascii=False)
+
+    
+def load_checkpoint(output_dir):
+    if os.path.exists(os.path.join(output_dir,'results.json')):
+        with open(os.path.join(output_dir,'results.json'), 'r') as file:
+            results = json.load(file)
+    if os.path.exists(os.path.join(output_dir,'all_error_funcs_content.json')):
+        with open(os.path.join(output_dir,'all_error_funcs_content.json'), 'r') as f:
+            all_error_funcs_content = json.load(f)
+    if os.path.exists(os.path.join(output_dir,'once_retry_count_dict.json')):
+        with open(os.path.join(output_dir,'once_retry_count_dict.json'), 'r') as f:
+            once_retry_count_dict = json.load(f)
+
+    global total_retry_count, total_regenerate_count, total_error_count
+    checkpoint_path = os.path.join(output_dir, 'checkpoint.json')
+    if os.path.exists(checkpoint_path):
+        with open(checkpoint_path, 'r') as f:
+            checkpoint = json.load(f)
+            total_retry_count = checkpoint['total_retry_count']
+            total_regenerate_count = checkpoint['total_regenerate_count']
+            total_error_count = checkpoint['total_error_count']
+            return results, once_retry_count_dict, all_error_funcs_content
+    return {}, {}, {}
+
+
+
+def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir, all_error_funcs_content, once_retry_count_dict, test_names, params):
     start_time = time.time()
     
     lock = threading.Lock()
@@ -425,11 +485,10 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
 
     # 并行处理每个 test_source_name
     for group in parallel_groups:
-        # with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count() * 4) as executor:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
             futures = []
             for test_source_name in group:
-                future = executor.submit(process_test_source_name, test_source_name, sorted_funcs_depth[test_source_name], source_names, funcs_childs, data_manager, copy.deepcopy(results), logger, llm_model, tmp_dir, start_time, copy.deepcopy(all_error_funcs_content), copy.deepcopy(once_retry_count_dict), lock, output_dir,params)
+                future = executor.submit(process_test_source_name, test_source_name, sorted_funcs_depth[test_source_name], source_names, funcs_childs, data_manager, results, all_error_funcs_content, once_retry_count_dict, logger, llm_model, tmp_dir, start_time, lock, output_dir, params)
                 futures.append(future)
 
             # 等待所有任务完成并更新结果
@@ -437,18 +496,14 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
                 result = future.result()
                 if result is not None:
                     updated_results, updated_all_error_funcs_content, updated_once_retry_count_dict = result
-                    update_nested_dict(results, updated_results)
-                    update_nested_dict(all_error_funcs_content, updated_all_error_funcs_content)
-                    update_nested_dict(once_retry_count_dict, updated_once_retry_count_dict)
-                    with open(os.path.join(output_dir, 'results.json'), 'w') as f:
-                        json.dump(results, f, indent=4)
-                    with open(os.path.join(output_dir, 'once_retry_count_dict.json'), 'w') as f:
-                        json.dump(once_retry_count_dict, f, indent=4)
-                    with open(os.path.join(output_dir, 'all_error_funcs_content.json'), 'w') as f:
-                        json.dump(all_error_funcs_content, f, indent=4, ensure_ascii=False)
+                    with lock:
+                        update_nested_dict(results, updated_results)
+                        update_nested_dict(all_error_funcs_content, updated_all_error_funcs_content)
+                        update_nested_dict(once_retry_count_dict, updated_once_retry_count_dict)
+                        save_checkpoint(results, once_retry_count_dict, all_error_funcs_content, output_dir)
 
+    return results, once_retry_count_dict, all_error_funcs_content, total_retry_count, total_regenerate_count, total_error_count
 
-    return results, once_retry_count_dict,all_error_funcs_content, total_retry_count, total_regenerate_count, total_error_count
 
 
 async def main():
@@ -465,7 +520,7 @@ async def main():
     source_files = {}
     include_dict = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict)
-    logger = logger_init(os.path.join(tmp_dir,'app.log'))
+    logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
@@ -521,6 +576,8 @@ async def main():
     if os.path.exists(os.path.join(output_dir,'once_retry_count_dict.json')):
         with open(os.path.join(output_dir,'once_retry_count_dict.json'), 'r') as f:
             once_retry_count_dict = json.load(f)
+
+    results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir)
 
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params

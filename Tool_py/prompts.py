@@ -5,7 +5,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         3. 不使用任何 `c_void、*mut`指针，使用Rust的特性如泛型<T>，智能指针替代，确保内存安全和所有权管理
         4. 返回最优结果，不做解释。
         5. 不使用Markdown格式返回，函数定义单独另起一行。
-        7. 结构体所有成员使用pub关键字，将所有函数，结构体，枚举，全局变量，全局类型定义设置成pub
+        7. 结构体所有成员使用pub关键字，所有函数，结构体，枚举，全局变量，全局类型定义声明成pub，允许外部访问，生成的所有的rust函数定义前面加pub关键字, 不要出现非pub的函数定义
         8. 可以用一些rust的高级特性 
         9. 避免使用 Box<dyn Any>
         10. 对于需要clone的类，结构体，实现clone方法
@@ -47,14 +47,13 @@ def get_error_fixing_prompt(template, compile_error):
     """
 
 def get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details, source_context):
-    
     ask = f"""
     1. Use pure Rust features, no unsafe code.
     2. Declare mutable variables with the mut keyword, and declare all variables that need to be assigned as mut.
     3. Do not use any `std::ffi::c_void, *mut` pointers, use Rust features such as generic<T>, smart pointers instead, to ensure memory safety and ownership management.
     4. Return the optimal result, without explanation.
     5. Do not use Markdown format for return, define function separately on a new line.
-    7. Use the pub keyword for all members of a struct, and set all functions, structs, enums, global variables, and global type definitions to pub.
+    7. Use the pub keyword for all members of a struct, and set all functions, structs, enums, global variables, and global type definitions to pub , add the pub keyword before all generated rust function definitions, do not include non-pub function definitions..
     8. Use some advanced Rust features.
     9. Avoid using Box<dyn Any>.
     10. Ensure the correctness of the implemented function's functionality, both logically and in terms of the corresponding C function. For test functions, ensure that the test cases are covered, and the test passes.
