@@ -134,6 +134,8 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         with open(src_output_path, 'w') as file:
             file.write(template + content)
         test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
+        attempts = 0
+        max_attempts = 1
         while test_error.count("error") > 1:
             print(test_error)
             prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
@@ -161,6 +163,15 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             with open(src_output_path, 'w') as file:
                 file.write(template + content)
             test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
+            attempts += 1
+
+            if attempts >= max_attempts:
+                attempts = 0
+                print("Reached maximum attempts, regenerating template.")
+                template = generate_response(prompt, llm_model, temperature=0).replace("```rust", "").replace("```", "")
+                with open(src_output_path, 'w') as file:
+                    file.write(template + content)
+                test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
 
     run_command(f"rustfmt {src_output_path}")
 
