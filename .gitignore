@@ -1,0 +1,12 @@
+build/
+c-algorithms/
+Tool_py/output/
+tmp/
+rust_ast_project/target/
+.bash_history
+.python_history
+llvm-project/
+.viminfo
+.ipython/
+Tool_py/__pycache__/
+__pycache__/

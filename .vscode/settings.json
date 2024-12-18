@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "framework.h": "c",
+        "alloc-testing.h": "c",
+        "arraylist.h": "c"
+    }
+}
