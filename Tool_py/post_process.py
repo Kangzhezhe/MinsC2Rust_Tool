@@ -135,7 +135,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             file.write(template + content)
         test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
         attempts = 0
-        max_attempts = 1
+        max_attempts = 10
         while test_error.count("error") > 1:
             print(test_error)
             prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
