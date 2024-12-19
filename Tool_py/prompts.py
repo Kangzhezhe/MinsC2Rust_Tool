@@ -48,7 +48,7 @@ def get_error_fixing_prompt(template, compile_error):
 
 def get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details, source_context):
     ask = f"""
-    1. Use pure Rust features, no unsafe code.
+    1. Use native Rust features, no unsafe code.
     2. Declare mutable variables with the mut keyword, and declare all variables that need to be assigned as mut.
     3. Do not use any `std::ffi::c_void, *mut` pointers, use Rust features such as generic<T>, smart pointers instead, to ensure memory safety and ownership management.
     4. Return the optimal result, without explanation.

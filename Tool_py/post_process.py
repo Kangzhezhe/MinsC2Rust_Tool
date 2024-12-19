@@ -136,7 +136,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             file.write(template + content)
         test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
         attempts = 0
-        max_attempts = 10
+        max_attempts = 8
+        regenerations =0
+        max_regenerations = 3
         while test_error.count("error") > 1:
             print(test_error)
             prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
@@ -168,6 +170,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
 
             if attempts >= max_attempts:
                 attempts = 0
+                regenerations += 1
+                if regenerations >= max_regenerations:
+                    raise Exception(f"达到最大重试次数，请手动修改{source}文件的编译错误然后重新运行")
                 print("Reached maximum attempts, regenerating template.")
                 template = generate_response(prompt, llm_model, temperature=0).replace("```rust", "").replace("```", "")
                 with open(src_output_path, 'w') as file:

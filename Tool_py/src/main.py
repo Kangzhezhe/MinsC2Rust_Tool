@@ -23,7 +23,6 @@ from utils import *
 from data_manager import DataManager
 from models.llm_model import generate_response
 from metrics import calculate_compile_pass_rates,calculate_retry_pass_rates
-from post_process import post_process
 from prompts import *
 
 total_retry_count = 0
@@ -250,7 +249,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         if key in all_files:
                             first_lines[key] = {}
                             for sub_key, sub_value in value_dict.items():
-                                if key == source_name and sub_key == func_name :
+                                if key == source_name and sub_key == func_name or sub_key == 'extra':
                                     first_lines[key][sub_key] = sub_value
                                 else:
                                     first_line = sub_value.lstrip().split('\n', 1)[0]
@@ -292,8 +291,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                 function_names = function_content_dict.keys()
                                 source_names_set = {data_manager.get_source_name_by_func_name(func_name) for func_name in function_names if func_name != 'main'}
                                 for source in source_names_set:
-                                    if source not in results_copy:
-                                        continue
                                     if 'extra' in results_copy.get(source,[]):
                                         output_content = results_copy[source]['extra'] + '\n' + output_content
 
@@ -516,8 +513,6 @@ async def main():
 
     # llm_model = "local"
     llm_model = "qwen"
-    header_files = {}
-    source_files = {}
     include_dict = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict)
     logger = logger_init(os.path.join(output_dir,'app.log'))
