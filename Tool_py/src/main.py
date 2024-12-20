@@ -38,7 +38,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     funcs_child = funcs_childs[test_source_name]
 
     max_history_length = 0
-    data_manager.get_include_indices(test_source_name)
+    data_manager.get_include_indices_with_parent(test_source_name)
     _, _, i = data_manager.get_content(func_name)
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
@@ -48,7 +48,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
         return
-    
     end_time = time.time()
     elapsed_time = end_time - start_time
     hours, remainder = divmod(elapsed_time, 3600)
@@ -171,17 +170,17 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 all_function_lines = '\n'.join(
                     value
                     for file, source in results.items()
-                    if file in all_files
+                    if file in data_manager.all_include_files and file not in all_files
                     for key, value in source.items()
-                    if key != 'extra'
                 )
 
                 all_function_lines = all_function_lines + '\n'.join(
                     value
                     for file, source in results.items()
-                    if file in data_manager.all_include_files and file not in all_files
+                    if file in all_files
                     for key, value in source.items()
-                ) + '\n' + template
+                    if key != 'extra'
+                )+ '\n' + template
                 
                 non_function_content, function_content_dict, output_content = deduplicate_code(all_function_lines,tmp_dir)
                 if func_name not in function_content_dict:
@@ -223,8 +222,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 logger.info(f'all_files:{all_files}')
                 with open(os.path.join(tmp_dir,'processed_all_files.rs'), 'w') as f:
                     f.write(output_content)
-                results_copy = results.copy()
-                temp_results = {k: v for k, v in function_content_dict.items() if data_manager.get_source_name_by_func_name(k) in all_files and k in funcs }
+                results_copy = copy.deepcopy(results)
+                temp_results = {k: v for k, v in function_content_dict.items() if data_manager.get_source_name_by_func_name(k) in all_files}
                 extra_content = '\n'.join(v for k, v in function_content_dict.items() if k not in temp_results and k != 'main')
                 for k, v in temp_results.items():
                     _, _, i = data_manager.get_content(k)
@@ -304,7 +303,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                             debug(compile_error2)
                             if compile_error2:
                                 retry+=1
-                                if retry>max_json_insert_retries:
+                                if retry>=max_json_insert_retries:
                                     logger.info("Failed to parse JSON response, skiping...")
                                     break
                                 logger.info(f"Compilation failed for json processed_all_files.rs, retrying...") 
@@ -312,7 +311,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                 continue
                         except json.JSONDecodeError as e:
                             retry+=1
-                            if retry>max_json_insert_retries:
+                            if retry>=max_json_insert_retries:
                                 logger.info("Failed to parse JSON response, skiping...")
                                 break
                             logger.info("Failed to parse JSON response, regenerating...")
@@ -328,6 +327,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     raise ValueError("all_files is not correct")
 
                 if retry>=max_json_insert_retries:
+                    with lock:
+                        total_error_count += 1
+                    if source_name not in all_error_funcs_content:
+                        all_error_funcs_content[source_name] = {}
+                    all_error_funcs_content[source_name][func_name] = output_content + '\n //insert编译报错信息：' + compile_error2
                     shutil.rmtree(tmp_dir)
                     return
                 results = results_copy
@@ -525,6 +529,17 @@ async def main():
     src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
     source_path = test_path
     source_path.extend(src_path)
+
+    # source_path = [
+    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
+    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
+    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+    # ]
+    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray']
+    # test_names = ['test-compare-functions','test-sortedarray']
 
 
     files_to_remove = []

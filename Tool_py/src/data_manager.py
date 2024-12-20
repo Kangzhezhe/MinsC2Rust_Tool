@@ -16,6 +16,13 @@ class DataManager:
             if source not in all_files:
                 all_files.append(source)
                 self.get_all_source(source,all_files)
+            
+    def get_parent_sources(self, source_name, all_files):
+        for parent, children in self.include_dict.items():
+            if source_name in children and parent not in all_files:
+                all_files.append(parent)
+                self.get_parent_sources(parent, all_files)
+
     
     def get_include_indices(self,test_source_name):
         all_include_files = [test_source_name]
@@ -24,6 +31,19 @@ class DataManager:
         self.include_files_indices = include_files_indices
         self.all_include_files = all_include_files
         return include_files_indices,all_include_files
+
+    
+    def get_include_indices_with_parent(self, test_source_name):
+        all_include_files = [test_source_name]
+        self.get_all_source(test_source_name, all_include_files)
+        for source in all_include_files.copy():
+            self.get_parent_sources(source, all_include_files)
+        for source in all_include_files.copy():
+            self.get_all_source(source, all_include_files)
+        include_files_indices = [self.source_names.index(file) for file in all_include_files if file in self.source_names]
+        self.include_files_indices = include_files_indices
+        self.all_include_files = all_include_files
+        return include_files_indices, all_include_files
 
     def get_content(self, func_name):
         for i, jsonfile in enumerate(self.data):

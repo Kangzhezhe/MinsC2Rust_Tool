@@ -87,14 +87,16 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             content = ""
         for key, value in results[source].items():
             if key not in ["extra", "main"]:
+                if value.startswith("fn"):
+                    value = 'pub ' + value
                 if key.startswith('test_'):
                     content += "#[test]\n" + "%s\n" % value
                 else:
                     content += "%s\n" % value
         content = re.sub(r'\n{3,}', '\n\n', content)
-        updated_content = re.sub(r'(?m)^(fn\s+\w+(\s*<[^>]*>)?\s*\([^)]*\)\s*->\s*[\w:<>]+\s*\{)', r'pub \1', content)
+        # updated_content = re.sub(r'(?m)^(fn\s+\w+(\s*<[^>]*>)?\s*\([^)]*\)\s*->\s*[\w:<>]+\s*\{)', r'pub \1', content)
 
-        return updated_content
+        return content
 
     content = get_content(source, results)
 
@@ -156,7 +158,8 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                         for sub_key, sub_value in value.items():
                             if sub_key in first_lines[key]:
                                 if sub_key == 'extra' and results[key].get(sub_key, '') != '':
-                                    results[key][sub_key] = remove_function_definitions(sub_value)
+                                    # results[key][sub_key] = remove_function_definitions(sub_value)
+                                    results[key][sub_key] = sub_value
                     child_path = get_source_path(key, src_names)
                     with open(child_path, 'w') as file:
                         file.write(get_content(key, results))
