@@ -174,7 +174,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     for key, value in source.items()
                 )
 
-                all_function_lines = all_function_lines + '\n'.join(
+                all_function_lines1 = all_function_lines + '\n'.join(
                     value
                     for file, source in results.items()
                     if file in all_files
@@ -182,7 +182,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     if key != 'extra'
                 )+ '\n' + template
                 
-                non_function_content, function_content_dict, output_content = deduplicate_code(all_function_lines,tmp_dir)
+                non_function_content, function_content_dict, output_content = deduplicate_code(all_function_lines1,tmp_dir)
                 if func_name not in function_content_dict:
                     retry_count = max_retries
                     continue
@@ -196,7 +196,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     definitions = read_json_file(os.path.join(tmp_dir,'definitions.json'))
                     line_funcs = get_functions_by_line_numbers(definitions, line_numbers)
                     if len(line_numbers) > len(line_funcs):
-                        template = non_function_content+'\n'+template
+                        non_function_content1, _, _ = deduplicate_code(all_function_lines,tmp_dir)
+                        template = non_function_content1+'\n'+template
                         all_files = data_manager.all_include_files
                     for func in line_funcs:
                         if func not in child_funs and func != 'main' and func != func_name:
@@ -484,7 +485,6 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
             include_lists.pop(test_name, None)
         parallel_groups.append(group)
     # 并行处理每个 test_source_name
-    import ipdb; ipdb.set_trace()
     for group in parallel_groups:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
             futures = []
