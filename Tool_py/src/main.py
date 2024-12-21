@@ -102,7 +102,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             with open(os.path.join(tmp_dir,'temp.rs'), 'w') as f:
                 f.write(template)
             last_compile_error = compile_error
-            compile_error = run_command(f"rustc {os.path.join(tmp_dir,'temp.rs')}")
+            compile_error = run_command(f"rustc -Awarnings {os.path.join(tmp_dir,'temp.rs')}")
             delete_file_if_exists('temp')
             compile_error = filter_toolchain_errors(compile_error)
             if compile_error != '' and compile_error1 != '' and last_compile_error == compile_error and retry_count != 0:
@@ -188,7 +188,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     continue
                 with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
                     f.write(output_content)
-                compile_error1 = run_command(f'rustc {os.path.join(tmp_dir,'test_source.rs')}')
+                compile_error1 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir,'test_source.rs')}')
                 delete_file_if_exists('test_source')
                 if compile_error1:
                     line_numbers = re.findall(r'-->.*:(\d+):\d+', compile_error1)
@@ -279,12 +279,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                     for file, source in results_copy.items()
                                     if file in all_child_files
                                     for key, value in source.items()
-                                    if (not (file == source_name and key == func_name) ) and key != 'extra'
+                                    if (not (file == source_name and key == func_name) ) and key != 'extra' and key != 'main'
                                 )
                                 if source_name in all_child_files:
                                     all_function_lines = all_function_lines + '\n' + results_copy[source_name][func_name]
-                                if 'main' not in all_function_lines:
-                                    all_function_lines += '\nfn main(){}'
+                                all_function_lines += '\nfn main(){}'
                                 _, function_content_dict, output_content = deduplicate_code(all_function_lines,tmp_dir)
 
                                 function_names = function_content_dict.keys()
@@ -292,10 +291,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                 for source in source_names_set:
                                     if 'extra' in results_copy.get(source,[]):
                                         output_content = results_copy[source]['extra'] + '\n' + output_content
+                                        
 
                                 with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
                                     f.write(output_content)
-                                compile_error2 = run_command(f'rustc {os.path.join(tmp_dir,'test_source.rs')}')
+                                compile_error2 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir,'test_source.rs')}')
 
                                 delete_file_if_exists('test_source')
                                 if compile_error2:
@@ -483,8 +483,8 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
         for test_name in to_remove:
             include_lists.pop(test_name, None)
         parallel_groups.append(group)
-
     # 并行处理每个 test_source_name
+    import ipdb; ipdb.set_trace()
     for group in parallel_groups:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
             futures = []
@@ -506,7 +506,6 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
     return results, once_retry_count_dict, all_error_funcs_content, total_retry_count, total_regenerate_count, total_error_count
 
 
-
 async def main():
     if len(sys.argv) != 2:
         print("Usage: python main_multi.py <config_path>")
@@ -517,8 +516,8 @@ async def main():
 
     # llm_model = "local"
     llm_model = "qwen"
-    include_dict = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict)
+    include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
+    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))

@@ -138,7 +138,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             file.write(template + content)
         test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
         attempts = 0
-        max_attempts = 8
+        max_attempts = 10
         regenerations =0
         max_regenerations = 3
         while test_error.count("error") > 1:
@@ -194,10 +194,8 @@ if __name__ == "__main__":
     tmp_dir, output_dir, output_project_path,compile_commands_path,params,excluded_files= setup_project_directories(cfg)
 
     llm_model = "qwen"
-    header_files = {}
-    source_files = {}
-    include_dict = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict)
+    include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
+    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))

@@ -9,6 +9,7 @@ import json
 import yaml
 import graphviz
 import os
+from AST_test import get_function_pointer_dependencies_dict 
 
 """
 Dumps a callgraph of a function in a codebase
@@ -321,7 +322,7 @@ def extract_function_names(func):
     else:
         return pattern_func.match(func).group(1)
     
-def clang_callgraph(compile_commands_path ,include_dirs = None):
+def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None):
     if len(sys.argv) < 2:
         print('usage: ' + sys.argv[0] +
               '[extra clang args...]')
@@ -380,6 +381,22 @@ def clang_callgraph(compile_commands_path ,include_dirs = None):
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
 
+    dependencies = get_function_pointer_dependencies_dict(all_file_paths)
+    for source_name, funcs in result_funcs_child.items():
+        for func_name, children in funcs.items():
+            if func_name in dependencies:
+                # 使用集合去重
+                unique_children = set(children)
+                unique_children.update(dependencies[func_name])
+                result_funcs_child[source_name][func_name] = list(unique_children)
+                # 更新 result_funcs_depth
+                for child in unique_children:
+                    if child in result_funcs_depth[source_name]:
+                        result_funcs_depth[source_name][child] = max(result_funcs_depth[source_name][child], result_funcs_depth[source_name][func_name] + 1)
+                    else:
+                        result_funcs_depth[source_name][child] = result_funcs_depth[source_name][func_name] + 1
+    
+
     flattened_funcs_child = {}
     for source, funcs in result_funcs_child.items():
         for func_name, children in funcs.items():
@@ -399,8 +416,8 @@ def clang_callgraph(compile_commands_path ,include_dirs = None):
             if set(all_funcs).isdisjoint(set(all_childs)):
                 excluded_childs.add(child)
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
-                
 
+               
     # if cfg['lookup']:
     #     print_callgraph(cfg['lookup'])
     # if cfg['ask']:

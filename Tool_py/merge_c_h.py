@@ -55,6 +55,7 @@ def process_files(compile_commands_path, output_dir):
 
     # 存储每个 .c 文件及其包含的 .h 文件的字典
     include_dict = {}
+    all_file_paths = []
     excluded_files = {"alloc-testing", "test-alloc-testing", "framework"}
 
     # 处理每个 .c 文件
@@ -77,12 +78,14 @@ def process_files(compile_commands_path, output_dir):
 
         # 合并文件内容并保存到输出文件
         included_files = merge_files(c_filename, output_filename, include_dirs)
+        if output_filename not in all_file_paths:
+            all_file_paths.append(output_filename)
         filtered_files = [f for f in included_files if f not in excluded_files]
         key = os.path.splitext(os.path.basename(c_filename))[0]
         if key not in excluded_files:
             include_dict[key] = [f for f in filtered_files if f != key]  # 去掉路径和后缀，并排除与键相同的值
 
-    return include_dict
+    return include_dict,all_file_paths
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:

@@ -1,4 +1,5 @@
 # 导入必要的模块
+from collections import defaultdict
 from pycparser import parse_file, c_ast
 from pycparser.plyparser import ParseError
 import json
@@ -10,6 +11,79 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 fake_libc_include_path = os.path.abspath(os.path.join(current_dir, '../fake_libc_include'))
 print(f"fake_libc_include_path: {fake_libc_include_path}")
 
+# 查找函数调用的访问者类
+class FunctionCallVisitor(c_ast.NodeVisitor):
+    def __init__(self):
+        self.function_calls = []
+        self.current_function = None
+        self.function_stack = []
+
+    def visit_FuncDef(self, node):
+        self.function_stack.append(node.decl.name)
+        self.current_function = node.decl.name
+        self.generic_visit(node)
+        self.function_stack.pop()
+        self.current_function = self.function_stack[-1] if self.function_stack else None
+
+    def visit_FuncCall(self, node):
+        self.function_calls.append((node, node.coord.line, self.current_function))
+        self.generic_visit(node)
+
+class FunctionDefVisitor(c_ast.NodeVisitor):
+    def __init__(self):
+        self.functions = set()
+
+    def visit_FuncDef(self, node):
+        self.functions.add(node.decl.name)
+        self.generic_visit(node)
+
+    def visit_Decl(self, node):
+        if isinstance(node.type, c_ast.FuncDecl):
+            self.functions.add(node.name)
+        self.generic_visit(node)
+
+# 获取函数指针依赖关系
+def get_function_pointer_dependencies(ast):
+    # 获取所有函数的名字
+    fd_visitor = FunctionDefVisitor()
+    fd_visitor.visit(ast)
+    functions = fd_visitor.functions
+
+    fc_visitor = FunctionCallVisitor()
+    fc_visitor.visit(ast)
+
+    dependencies = {}
+
+    for fc, line, parent_func_name in fc_visitor.function_calls:
+        if parent_func_name not in dependencies:
+            dependencies[parent_func_name] = set()
+
+        if fc.args is not None:
+            for arg in fc.args.exprs:
+                if isinstance(arg, c_ast.ID) and arg.name in functions:
+                    dependencies[parent_func_name].add(arg.name)
+                elif isinstance(arg, c_ast.Cast) and isinstance(arg.expr, c_ast.ID) and arg.expr.name in functions:
+                    dependencies[parent_func_name].add(arg.expr.name)
+
+    # 过滤掉没有函数指针参数的函数调用
+    dependencies = {k: list(v) for k, v in dependencies.items() if v}
+
+    return dependencies
+
+def get_function_pointer_dependencies_dict(filenames):
+    dependencies = defaultdict(set)
+
+    for file in filenames:
+        ast = parse_c_file(file)
+        dependency = get_function_pointer_dependencies(ast)
+        for k, v in dependency.items():
+            dependencies[k].update(v)  # 使用update方法添加依赖项到集合中
+
+    # 将集合转换为列表
+    dependencies = {k: list(v) for k, v in dependencies.items()}
+
+    return dependencies
+
 
 # 忽略标准库头文件
 def parse_c_file(filename):
@@ -19,7 +93,7 @@ def parse_c_file(filename):
         ast = parse_file(filename, use_cpp=True,
                          cpp_path='/usr/bin/cpp',
                          cpp_args=f'-I{fake_libc_include_path}')
-        print("解析成功，生成的 AST 树如下：")
+        # print("解析成功，生成的 AST 树如下：")
         return ast
     except ParseError as e:
         print(f"解析错误: {e}")
