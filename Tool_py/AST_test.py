@@ -61,8 +61,12 @@ def get_function_pointer_dependencies(ast):
         if fc.args is not None:
             for arg in fc.args.exprs:
                 if isinstance(arg, c_ast.ID) and arg.name in functions:
+                    if arg.name in ['alloc_test_malloc','alloc_test_free','alloc_test_calloc','alloc_test_strdup','alloc_test_realloc']:
+                        continue
                     dependencies[parent_func_name].add(arg.name)
                 elif isinstance(arg, c_ast.Cast) and isinstance(arg.expr, c_ast.ID) and arg.expr.name in functions:
+                    if arg.expr.name in ['alloc_test_malloc','alloc_test_free','alloc_test_calloc','alloc_test_strdup','alloc_test_realloc']:
+                        continue
                     dependencies[parent_func_name].add(arg.expr.name)
 
     # 过滤掉没有函数指针参数的函数调用

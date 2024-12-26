@@ -395,7 +395,11 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                         result_funcs_depth[source_name][child] = max(result_funcs_depth[source_name][child], result_funcs_depth[source_name][func_name] + 1)
                     else:
                         result_funcs_depth[source_name][child] = result_funcs_depth[source_name][func_name] + 1
-    
+                    if child in dependencies[func_name]:
+                        result_funcs_depth[source_name] = {child: result_funcs_depth[source_name][child], **result_funcs_depth[source_name]}
+
+        result_funcs_depth[source_name] = dict(sorted(result_funcs_depth[source_name].items(), key=lambda item: item[1], reverse=True))
+
 
     flattened_funcs_child = {}
     for source, funcs in result_funcs_child.items():

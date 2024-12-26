@@ -38,12 +38,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     funcs_child = funcs_childs[test_source_name]
 
     max_history_length = 0
-    data_manager.get_include_indices_with_parent(test_source_name)
+    data_manager.get_include_indices(test_source_name)
     _, _, i = data_manager.get_content(func_name)
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
     else:
-        raise ValueError("source_name is not correct")
+        raise ValueError(f"{source_name} is not correct")
 
     if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
@@ -78,7 +78,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     text_remove = response.replace("```rust", "").replace("```", "")
 
     
-    max_retries = min(4+depth, params['max_retries'])
+    max_retries = min(4+depth*2, params['max_retries'])
     template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
     compile_error1 = ''
     conversation_history = []
@@ -134,7 +134,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     if i > 0:
                         prompt1 = 'history:\n' + prompt1
                         debug(f"Prompt length after history: {len(prompt1)}")
-
                 response = generate_response(prompt1,llm_model)
                 debug(response)
                 template = response.replace("```rust", "").replace("```", "")
@@ -239,6 +238,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 # if source_name in src_names:
                 #     results[source_name]['extra'] = non_function_content
+
                 all_files = data_manager.all_include_files
                 logger.info(f"Processing extra insert")
                 first_lines = {}
@@ -259,6 +259,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     debug('non_function_content:', non_function_content)
                     prompt1 = task_prompt
                     retry = 0
+                    # data_manager.get_include_indices_with_parent(test_source_name)
+                    # all_files = data_manager.all_include_files
                     while True:
                         debug(f"Prompt length: {len(prompt1)}")
                         response = generate_response(prompt1,llm_model,0.2)
@@ -280,16 +282,13 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                     for file, source in results_copy.items()
                                     if file in all_child_files
                                     for key, value in source.items()
-                                    if (not (file == source_name and key == func_name) ) and key != 'extra' and key != 'main'
+                                    if key != 'extra' and key != 'main'
                                 )
-                                if source_name in all_child_files:
-                                    all_function_lines = all_function_lines + '\n' + results_copy[source_name][func_name]
+                                
                                 all_function_lines += '\nfn main(){}'
-                                _, function_content_dict, output_content = deduplicate_code(all_function_lines,tmp_dir)
+                                output_content = all_function_lines
 
-                                function_names = function_content_dict.keys()
-                                source_names_set = {data_manager.get_source_name_by_func_name(func_name) for func_name in function_names if func_name != 'main'}
-                                for source in source_names_set:
+                                for source in all_child_files:
                                     if 'extra' in results_copy.get(source,[]):
                                         output_content = results_copy[source]['extra'] + '\n' + output_content
                                         
@@ -386,6 +385,7 @@ def process_test_source_name(test_source_name, funcs, source_names, funcs_childs
     local_all_error_funcs_content = copy.deepcopy(shared_all_error_funcs_content)
     local_once_retry_count_dict = copy.deepcopy(shared_once_retry_count_dict)
 
+
     with tqdm(funcs.items(), desc=f"{test_source_name}") as pbar:
         for func_name, depth in pbar:
             pbar.set_postfix(func_name=func_name) 
@@ -436,7 +436,7 @@ def save_checkpoint(results, once_retry_count_dict, all_error_funcs_content, out
         json.dump(checkpoint, f, indent=4, ensure_ascii=False)
 
     
-def load_checkpoint(output_dir):
+def load_checkpoint(output_dir, results={}, once_retry_count_dict={}, all_error_funcs_content={}):
     if os.path.exists(os.path.join(output_dir,'results.json')):
         with open(os.path.join(output_dir,'results.json'), 'r') as file:
             results = json.load(file)
@@ -484,6 +484,7 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
         for test_name in to_remove:
             include_lists.pop(test_name, None)
         parallel_groups.append(group)
+
     # 并行处理每个 test_source_name
     for group in parallel_groups:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
@@ -574,19 +575,7 @@ async def main():
     once_retry_count_dict = defaultdict(dict)
     results = defaultdict(dict)
 
-    if os.path.exists(os.path.join(output_dir,'results.json')):
-        with open(os.path.join(output_dir,'results.json'), 'r') as file:
-            results = json.load(file)
-
-    if os.path.exists(os.path.join(output_dir,'all_error_funcs_content.json')):
-        with open(os.path.join(output_dir,'all_error_funcs_content.json'), 'r') as f:
-            all_error_funcs_content = json.load(f)
-        
-    if os.path.exists(os.path.join(output_dir,'once_retry_count_dict.json')):
-        with open(os.path.join(output_dir,'once_retry_count_dict.json'), 'r') as f:
-            once_retry_count_dict = json.load(f)
-
-    results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir)
+    results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
 
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params

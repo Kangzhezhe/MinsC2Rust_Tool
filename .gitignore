@@ -10,3 +10,4 @@ llvm-project/
 .ipython/
 Tool_py/__pycache__/
 __pycache__/
+Tool_py/streamlit1.27/
