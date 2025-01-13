@@ -29,6 +29,7 @@ class FunctionCallVisitor(c_ast.NodeVisitor):
         self.function_calls.append((node, node.coord.line, self.current_function))
         self.generic_visit(node)
 
+
 class FunctionDefVisitor(c_ast.NodeVisitor):
     def __init__(self):
         self.functions = set()
@@ -42,52 +43,6 @@ class FunctionDefVisitor(c_ast.NodeVisitor):
             self.functions.add(node.name)
         self.generic_visit(node)
 
-# 获取函数指针依赖关系
-def get_function_pointer_dependencies(ast):
-    # 获取所有函数的名字
-    fd_visitor = FunctionDefVisitor()
-    fd_visitor.visit(ast)
-    functions = fd_visitor.functions
-
-    fc_visitor = FunctionCallVisitor()
-    fc_visitor.visit(ast)
-
-    dependencies = {}
-
-    for fc, line, parent_func_name in fc_visitor.function_calls:
-        if parent_func_name not in dependencies:
-            dependencies[parent_func_name] = set()
-
-        if fc.args is not None:
-            for arg in fc.args.exprs:
-                if isinstance(arg, c_ast.ID) and arg.name in functions:
-                    if arg.name in ['alloc_test_malloc','alloc_test_free','alloc_test_calloc','alloc_test_strdup','alloc_test_realloc']:
-                        continue
-                    dependencies[parent_func_name].add(arg.name)
-                elif isinstance(arg, c_ast.Cast) and isinstance(arg.expr, c_ast.ID) and arg.expr.name in functions:
-                    if arg.expr.name in ['alloc_test_malloc','alloc_test_free','alloc_test_calloc','alloc_test_strdup','alloc_test_realloc']:
-                        continue
-                    dependencies[parent_func_name].add(arg.expr.name)
-
-    # 过滤掉没有函数指针参数的函数调用
-    dependencies = {k: list(v) for k, v in dependencies.items() if v}
-
-    return dependencies
-
-def get_function_pointer_dependencies_dict(filenames):
-    dependencies = defaultdict(set)
-
-    for file in filenames:
-        ast = parse_c_file(file)
-        dependency = get_function_pointer_dependencies(ast)
-        for k, v in dependency.items():
-            dependencies[k].update(v)  # 使用update方法添加依赖项到集合中
-
-    # 将集合转换为列表
-    dependencies = {k: list(v) for k, v in dependencies.items()}
-
-    return dependencies
-
 
 # 忽略标准库头文件
 def parse_c_file(filename):
@@ -97,6 +52,7 @@ def parse_c_file(filename):
         ast = parse_file(filename, use_cpp=True,
                          cpp_path='/usr/bin/cpp',
                          cpp_args=f'-I{fake_libc_include_path}')
+
         # print("解析成功，生成的 AST 树如下：")
         return ast
     except ParseError as e:
@@ -154,6 +110,7 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
             # 将文件包含所有函数分割
             result = {}
             all_function_lines = set()
+           
 
             # 获取指定函数的上下文
             for func in funcs:
@@ -202,3 +159,79 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
                 json.dump(result, json_file, indent=4)
 
 
+# 文件范围内函数指针依赖访问者
+class FileScopeFunctionPointerVisitor(c_ast.NodeVisitor):
+    def __init__(self, defined_functions):
+        self.defined_functions = defined_functions  # 文件内定义的函数
+        self.global_function_pointers = defaultdict(list)  # 每个函数的全局依赖
+        self.current_function = None  # 当前函数名
+        self.local_symbols = set()  # 当前函数体内定义的局部符号
+        self.excluded_functions = ['alloc_test_malloc', 'alloc_test_free', 'alloc_test_calloc', 'alloc_test_strdup', 'alloc_test_realloc','alloc_test_set_limit']
+
+    def visit_FuncDef(self, node):
+        """
+        处理函数定义，收集函数体内的全局函数依赖。
+        """
+        self.current_function = node.decl.name
+        self.local_symbols = set()  # 重置局部符号
+        self.collect_local_symbols(node.body)  # 收集局部变量
+        self.generic_visit(node)  # 遍历函数体
+
+    def visit_ID(self, node):
+        """
+        捕获函数体内所有出现的标识符（包括函数指针）。
+        """
+        if self.current_function is None:
+            return
+
+        identifier = node.name
+        if (
+            identifier
+            and identifier not in self.local_symbols  # 排除局部定义
+            and identifier in self.defined_functions  # 必须是当前文件定义的
+            and identifier != self.current_function  # 排除对自身的调用
+            and identifier not in self.excluded_functions  # 排除特定函数
+        ):
+            self.global_function_pointers[self.current_function].append(identifier)
+
+    def collect_local_symbols(self, node):
+        """
+        收集函数体内定义的局部变量。
+        """
+        for child_name, child in node.children():
+            if isinstance(child, c_ast.Decl):
+                if isinstance(child.type, c_ast.FuncDecl):
+                    continue  # 跳过函数声明
+                self.local_symbols.add(child.name)
+            self.collect_local_symbols(child)
+
+
+# 获取全局函数指针依赖
+def get_global_function_pointer_dependencies(filenames):
+    """
+    获取函数体内部的全局函数指针依赖（未在函数体内定义，但出现在当前文件内定义的函数）。
+    :param filenames: C 文件路径列表
+    :return: 字典，键为函数名，值为全局函数指针依赖列表
+    """
+    dependencies = defaultdict(list)
+
+    for file in filenames:
+        ast = parse_c_file(file)
+
+        # 获取定义的函数
+        fd_visitor = FunctionDefVisitor()
+        fd_visitor.visit(ast)
+        defined_functions = fd_visitor.functions
+
+        # 获取函数体内的函数指针依赖
+        fc_visitor = FileScopeFunctionPointerVisitor(defined_functions)
+        fc_visitor.visit(ast)
+
+        for func_name, pointers in fc_visitor.global_function_pointers.items():
+            dependencies[func_name] = list(set(pointers))  # 对依赖去重
+
+    return dependencies
+
+if __name__ == "__main__":
+    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test1/tmp/src/tinyexpr.c'])
+    print(json.dumps(dependencies, indent=4))

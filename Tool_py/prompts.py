@@ -13,6 +13,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         12. 把测试用例中测试低内存场景的代码全部去掉，比如：Test low memory scenarios (failed malloc)，去掉所有相关的代码，去掉alloc_test_set_limit定义及相关函数 
         13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
+        15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
     """
     
 
@@ -45,6 +46,8 @@ def get_error_fixing_prompt(template, compile_error):
         6. 请确保功能代码的正确性
         7. 如果出现可变和不可变同时借用变量的错误，请确保所有的不可变借用操作在任何可变借用操作之前完成，比如先提取需要的数据，再进行操作
         8. 如果泛型T没有实现特性的错误，请实现对应的特性
+        9. 对于未定义的函数，结构体，全局变量，宏，生成对应的定义
+        10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
         待改错内容：{template+'//编译器错误信息：'+compile_error}
     """
 

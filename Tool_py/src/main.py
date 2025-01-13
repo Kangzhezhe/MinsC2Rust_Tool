@@ -119,7 +119,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     continue
                 logger.info(f"Compilation failed for {func_name}, retrying... {retry_count}/{max_retries}")
                 # history_prompt = "\n".join([f"Prompt: {entry['prompt']}\nResponse: {entry['response']}" for entry in conversation_history])
-                if params['enable_english_prompt'] :
+                if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template, compile_error)
                 else:
                     prompt1 = get_error_fixing_prompt(template, compile_error)

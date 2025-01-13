@@ -21,6 +21,7 @@ if __name__ == "__main__":
     compile_commands_path = cfg['Paths']['compile_commands_path']
 
     process_files(compile_commands_path, tmp_dir)
+    
 
     # 获取函数名称
     get_c_functions_name(src_dir, # 函数内容

@@ -66,8 +66,11 @@ class DataManager:
 
     def get_child_context(self, func_name, results, funcs_child):
         child_context = set()
+        extra_contents = []
         source_name = self.get_source_name_by_func_name(func_name)
-        child_context.add(results[source_name].get('extra', ''))
+        extra_content = results[source_name].get('extra', '')
+        if extra_content:
+            extra_contents.append(extra_content)
         child_funs = ''
         if func_name in funcs_child:
             all_child_funs = self.get_all_child_functions(func_name, funcs_child)
@@ -75,10 +78,10 @@ class DataManager:
                 if child_fun != func_name and self.get_result(child_fun, results) != '':
                     child_funs += child_fun + ","
                     extra = results[self.get_source_name_by_func_name(child_fun)].get('extra', '')
-                    if extra not in child_context:
-                        child_context.add(extra)
+                    if extra and extra not in extra_contents:
+                        extra_contents.append(extra)
                     child_context.add(self.get_result(child_fun, results))
-        child_context = '\n'.join(child_context)
+        child_context = '\n'.join(extra_contents + list(child_context))
         return child_context, child_funs
 
     def get_child_context_c(self, func_name, results, funcs_child):

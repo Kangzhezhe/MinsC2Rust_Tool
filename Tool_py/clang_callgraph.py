@@ -3,13 +3,13 @@
 from pprint import pprint
 import re
 from clang.cindex import CursorKind, Index, CompilationDatabase
-from collections import defaultdict
+from collections import OrderedDict, defaultdict, deque
 import sys
 import json
 import yaml
 import graphviz
 import os
-from AST_test import get_function_pointer_dependencies_dict 
+from AST_test import get_global_function_pointer_dependencies 
 
 """
 Dumps a callgraph of a function in a codebase
@@ -321,6 +321,82 @@ def extract_function_names(func):
         return None
     else:
         return pattern_func.match(func).group(1)
+
+def analyze_function_calls(funcs_childs):
+    # 将有向有环图转换为有向无环图，并计算深度
+    def remove_cycles(graph):
+        visited = set()
+        stack = set()
+        result = defaultdict(list)
+        depth = defaultdict(int)
+
+        def visit(node, current_depth):
+            if node in stack:
+                return False
+            if node in visited:
+                return True
+            stack.add(node)
+            for neighbor in graph.get(node, []):
+                if not visit(neighbor, current_depth + 1):
+                    continue
+                result[node].append(neighbor)
+                depth[neighbor] = max(depth[neighbor], current_depth + 1)
+            stack.remove(node)
+            visited.add(node)
+            depth[node] = max(depth[node], current_depth)
+            return True
+
+        for node in graph:
+            visit(node, 0)
+        return result, depth
+
+    # 拓扑排序并返回有序字典
+    def topological_sort(graph, depth):
+        in_degree = defaultdict(int)
+        for u in graph:
+            for v in graph[u]:
+                in_degree[v] += 1
+
+        queue = deque([u for u in graph if in_degree[u] == 0])
+        topo_order = []
+
+        while queue:
+            u = queue.popleft()
+            topo_order.append(u)
+            for v in graph[u]:
+                in_degree[v] -= 1
+                if in_degree[v] == 0:
+                    queue.append(v)
+
+        # 反转结果以确保子函数在前，父函数在后
+        topo_order.reverse()
+
+        # 创建有序字典
+        ordered_depth = OrderedDict()
+        for node in topo_order:
+            ordered_depth[node] = depth[node]
+
+        return ordered_depth
+
+    def ensure_ordered_depth(ordered_depth):
+        max_depth = float('-inf')
+        for key in reversed(ordered_depth):
+            if ordered_depth[key] < max_depth:
+                ordered_depth[key] = max_depth
+            else:
+                max_depth = ordered_depth[key]
+        return ordered_depth
+
+    # 转换为无环图并计算深度
+    dag, depth = remove_cycles(funcs_childs)
+
+    # 进行拓扑排序并返回有序字典
+    ordered_depth = topological_sort(dag, depth)
+
+    result = ensure_ordered_depth(ordered_depth)
+
+    return result
+
     
 def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None):
     if len(sys.argv) < 2:
@@ -354,6 +430,8 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         
     result_funcs_depth = {}
     result_funcs_child = {}
+    all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
+    dependencies = get_global_function_pointer_dependencies(all_file_paths)
     for source_name, value in data.items():
         funcs_depth = {}
         funcs_child = defaultdict(set)
@@ -372,33 +450,41 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                     if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name):
                         funcs_child[func].add(pretty_print(child)) 
         
-        sorted_funcs_depth = dict(sorted(funcs_depth.items(), key=lambda item: item[1], reverse=True))
-        sorted_funcs_depth = {extract_function_names(k): v for k, v in sorted_funcs_depth.items() if extract_function_names(k) and func_avaliabe(extract_function_names(k),source_name)}
+        # sorted_funcs_depth = dict(sorted(funcs_depth.items(), key=lambda item: item[1], reverse=True))
         funcs_child = {
             extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
             for k, vs in funcs_child.items() if extract_function_names(k)
         }
+
+        for func_name, children in funcs_child.items():
+            if func_name in dependencies:
+                funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
+
+
+        sorted_funcs_depth = analyze_function_calls(funcs_child)
+        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name)}
+        
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
 
-    dependencies = get_function_pointer_dependencies_dict(all_file_paths)
-    for source_name, funcs in result_funcs_child.items():
-        for func_name, children in funcs.items():
-            if func_name in dependencies:
-                # 使用集合去重
-                unique_children = set(children)
-                unique_children.update(dependencies[func_name])
-                result_funcs_child[source_name][func_name] = list(unique_children)
-                # 更新 result_funcs_depth
-                for child in unique_children:
-                    if child in result_funcs_depth[source_name]:
-                        result_funcs_depth[source_name][child] = max(result_funcs_depth[source_name][child], result_funcs_depth[source_name][func_name] + 1)
-                    else:
-                        result_funcs_depth[source_name][child] = result_funcs_depth[source_name][func_name] + 1
-                    if child in dependencies[func_name]:
-                        result_funcs_depth[source_name] = {child: result_funcs_depth[source_name][child], **result_funcs_depth[source_name]}
-
-        result_funcs_depth[source_name] = dict(sorted(result_funcs_depth[source_name].items(), key=lambda item: item[1], reverse=True))
+    # all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
+    # dependencies = get_global_function_pointer_dependencies(all_file_paths)
+    # for source_name, funcs in result_funcs_child.items():
+    #     for func_name, children in funcs.items():
+    #         if func_name in dependencies:
+    #             # 使用集合去重
+    #             unique_children = set(children)
+    #             unique_children.update(dependencies[func_name])
+    #             result_funcs_child[source_name][func_name] = list(unique_children)
+    #             # 更新 result_funcs_depth
+    #             for child in unique_children:
+    #                 if child in result_funcs_depth[source_name]:
+    #                     result_funcs_depth[source_name][child] = max(result_funcs_depth[source_name][child], result_funcs_depth[source_name][func_name] + 1)
+    #                 else:
+    #                     result_funcs_depth[source_name][child] = result_funcs_depth[source_name][func_name] + 1
+    #                 # if child in dependencies[func_name]:
+    #                 #     result_funcs_depth[source_name] = {child: result_funcs_depth[source_name][child], **result_funcs_depth[source_name]}
+    #     result_funcs_depth[source_name] = dict(sorted(result_funcs_depth[source_name].items(), key=lambda item: item[1], reverse=True))
 
 
     flattened_funcs_child = {}
@@ -420,8 +506,8 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             if set(all_funcs).isdisjoint(set(all_childs)):
                 excluded_childs.add(child)
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
-
                
+    import ipdb;ipdb.set_trace()
     # if cfg['lookup']:
     #     print_callgraph(cfg['lookup'])
     # if cfg['ask']:
