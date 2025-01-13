@@ -507,7 +507,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                 excluded_childs.add(child)
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
                
-    import ipdb;ipdb.set_trace()
     # if cfg['lookup']:
     #     print_callgraph(cfg['lookup'])
     # if cfg['ask']:

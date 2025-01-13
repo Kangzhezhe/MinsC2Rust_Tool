@@ -64,7 +64,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
-    debug(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
+    
 
     if params['enable_english_prompt']:
         prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details,source_context)
@@ -72,6 +72,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context, before_details,source_context)
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
+    logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
     debug(f"Prompt length: {len(prompt)}")
     response = generate_response(prompt, llm_model)
     debug(response)

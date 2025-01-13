@@ -14,6 +14,8 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
+        16. 对于c语言的宏定义，需要转换成rust的宏定义，不要使用rust函数替代宏定义
+        17. 对于c语言标准库函数，需要转换成rust标准库函数
     """
     
 
