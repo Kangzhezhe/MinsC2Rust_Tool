@@ -6,14 +6,15 @@ import os
 client = OpenAI(api_key=os.getenv("DEEPSEEK_API_KEY"), 
                 base_url="https://api.deepseek.com")
 
-def get_response_deepseek(prompt):
+def get_response_deepseek(prompt,temperature=1):
     response = client.chat.completions.create(
-        model="deepseek-coder",
+        model="deepseek-chat",
         messages=[
             {"role": "user", "content": prompt},
         ],
         stream=False,
-        temperature = 0,
+        temperature=temperature,
+        max_tokens=8192
     )
 
     return response.choices[0].message.content

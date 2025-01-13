@@ -64,7 +64,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
-    
 
     if params['enable_english_prompt']:
         prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details,source_context)
@@ -517,7 +516,8 @@ async def main():
     tmp_dir, output_dir, output_project_path,compile_commands_path,params,excluded_files= setup_project_directories(cfg)
 
     # llm_model = "local"
-    llm_model = "qwen"
+    # llm_model = "qwen"
+    llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))

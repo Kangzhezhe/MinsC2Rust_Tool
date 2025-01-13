@@ -42,7 +42,7 @@ def run_command(command):
 def filter_toolchain_errors(compile_error):
     # 使用正则表达式过滤掉工具链的错误信息及其具体内容
     filtered_error = re.sub(r'(?m)^   ::: .*\n(?:.*\n)*', '', compile_error)
-    filtered_error = re.sub(r'(?m)^    = note: .*\n(?:.*\n)*', '', filtered_error)
+    # filtered_error = re.sub(r'(?m)^    = note: .*\n(?:.*\n)*', '', filtered_error)
     filtered_error = re.sub(r'(?m)^help: .*\n(?:.*\n)*', '', filtered_error)
     return filtered_error
 

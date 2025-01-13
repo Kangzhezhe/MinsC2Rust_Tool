@@ -10,7 +10,7 @@ def generate_response(prompt,llm_model='qwen',temperature=1):
     elif llm_model == "qwen":
         response = get_response_qianwen(prompt,temperature)
     elif llm_model == "deepseek":
-        response = get_response_deepseek(prompt)
+        response = get_response_deepseek(prompt,temperature)
     elif llm_model == "zhipu":
         response = get_response_zhipu(prompt)
     return response

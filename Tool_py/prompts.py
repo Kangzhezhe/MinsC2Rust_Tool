@@ -15,7 +15,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
         16. 对于c语言的宏定义，需要转换成rust的宏定义，不要使用rust函数替代宏定义
-        17. 对于c语言标准库函数，需要转换成rust标准库函数
+        17. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
     """
     
 
@@ -50,6 +50,8 @@ def get_error_fixing_prompt(template, compile_error):
         8. 如果泛型T没有实现特性的错误，请实现对应的特性
         9. 对于未定义的函数，结构体，全局变量，宏，生成对应的定义
         10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
+        11. 对于c语言的宏定义，需要转换成rust的宏定义，不要使用rust函数替代宏定义
+        12. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
         待改错内容：{template+'//编译器错误信息：'+compile_error}
     """
 

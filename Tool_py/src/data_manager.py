@@ -80,6 +80,7 @@ class DataManager:
                     extra = results[self.get_source_name_by_func_name(child_fun)].get('extra', '')
                     if extra and extra not in extra_contents:
                         extra_contents.append(extra)
+                    # child_context.add(self.get_result(child_fun, results).lstrip().split('\n', 1)[0][:-1])
                     child_context.add(self.get_result(child_fun, results))
         child_context = '\n'.join(extra_contents + list(child_context))
         return child_context, child_funs
@@ -99,16 +100,17 @@ class DataManager:
 
     def get_details(self, func_names):
         before_details = ''
+        seen_details = set()
         for func_name in func_names:
             _, _, i = self.get_content(func_name)
             jsonfile = self.data[i]
             source_extra = jsonfile['extra']
             details_index = source_extra.find('extract_info')
             if details_index != -1:
-                before_details += '\n'
-                before_details += source_extra[:details_index]
-            else:
-                before_details += ''
+                detail = source_extra[:details_index]
+                if detail not in seen_details:
+                    seen_details.add(detail)
+                    before_details += '\n' + detail
         return before_details
 
     def get_all_child_functions(self, func_name, funcs_child):
