@@ -460,32 +460,11 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             if func_name in dependencies:
                 funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
 
-
         sorted_funcs_depth = analyze_function_calls(funcs_child)
         sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name)}
         
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
-
-    # all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
-    # dependencies = get_global_function_pointer_dependencies(all_file_paths)
-    # for source_name, funcs in result_funcs_child.items():
-    #     for func_name, children in funcs.items():
-    #         if func_name in dependencies:
-    #             # 使用集合去重
-    #             unique_children = set(children)
-    #             unique_children.update(dependencies[func_name])
-    #             result_funcs_child[source_name][func_name] = list(unique_children)
-    #             # 更新 result_funcs_depth
-    #             for child in unique_children:
-    #                 if child in result_funcs_depth[source_name]:
-    #                     result_funcs_depth[source_name][child] = max(result_funcs_depth[source_name][child], result_funcs_depth[source_name][func_name] + 1)
-    #                 else:
-    #                     result_funcs_depth[source_name][child] = result_funcs_depth[source_name][func_name] + 1
-    #                 # if child in dependencies[func_name]:
-    #                 #     result_funcs_depth[source_name] = {child: result_funcs_depth[source_name][child], **result_funcs_depth[source_name]}
-    #     result_funcs_depth[source_name] = dict(sorted(result_funcs_depth[source_name].items(), key=lambda item: item[1], reverse=True))
-
 
     flattened_funcs_child = {}
     for source, funcs in result_funcs_child.items():
@@ -511,6 +490,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     #     print_callgraph(cfg['lookup'])
     # if cfg['ask']:
     #     ask_and_print_callgraph()
+
     return result_funcs_depth,result_funcs_child,include_dirs
 if __name__ == '__main__':
     clang_callgraph()

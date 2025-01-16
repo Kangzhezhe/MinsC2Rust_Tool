@@ -2,7 +2,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
     ask = """
         1. 使用纯Rust特性，不使用unsafe代码。
         2. 用mut关键字声明可变变量，对于需要赋值的变量全部声明为mut
-        3. 不使用任何 `c_void、*mut`指针，使用Rust的特性如泛型<T>，智能指针替代，确保内存安全和所有权管理
+        3. 不使用任何 `c_void、*mut、 *const`指针，使用Rust的特性如泛型<T>，智能指针替代，确保内存安全和所有权管理
         4. 返回最优结果，不做解释。
         5. 不使用Markdown格式返回，函数定义单独另起一行。
         7. 结构体所有成员使用pub关键字，所有函数，结构体，枚举，全局变量，全局类型定义声明成pub，允许外部访问，生成的所有的rust函数定义前面加pub关键字, 不要出现非pub的函数定义
@@ -14,45 +14,43 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
-        16. 对于c语言的宏定义，需要转换成rust的宏定义，不要使用rust函数替代宏定义，使用宏的时候注意添加!符号
-        17. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
+        16. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
     """
     
 
     return f"""
         将以下C语言库函数转换为Rust库函数，要求如下：
         1. 返回值必须包含{child_funs_c}的Rust函数定义，保留函数命名与接口，不需要给出测试函数，不要使用面向对象封装函数。
-        2. 对于未定义的结构体、全局变量、宏，需要给出定义。
+        2. 对于未定义的结构体、全局变量、宏、枚举，需要给出定义。
         3. {ask}
         返回格式：
         pub fn {child_funs_c}(args ...) ->(return type) {{...}}
         参考内容：
         1. 已经转换的Rust子函数{child_funs}的定义：{child_context}
-        2. 所有c语言全局变量、结构体、宏：{before_details}
+        2. 所有c语言全局变量、结构体、宏、枚举：{before_details}
         注意：
-        1. 从参考内容Rust子函数{child_funs}里用到的结构体、全局变量、宏可直接调用，不给出定义。
+        1. 从参考内容Rust子函数{child_funs}可直接调用，不给出定义。
         给定内容：
         1. 待转换的函数源代码内容：{source_context}
     """
 
-def get_error_fixing_prompt(template, compile_error):
+def get_error_fixing_prompt(template, compile_error,before_details):
     return f"""
         Prompt:
         帮我修改以下rust代码中出现的编译错误
-        要求：
+        * 要求：
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
         3. 直接返回所有修改后的代码，不要解释
         4. 不要改变报错的代码的功能
-        5. 避免使用 Box<dyn Any>，而是使用泛型<T>和特征约束来确保类型安全和性能
+        5. 避免使用 `c_void、*mut、 *const` Box<dyn Any>，而是使用泛型<T>和特征约束来确保类型安全和性能
         6. 请确保功能代码的正确性
         7. 如果出现可变和不可变同时借用变量的错误，请确保所有的不可变借用操作在任何可变借用操作之前完成，比如先提取需要的数据，再进行操作
         8. 如果泛型类型没有实现比如clone特性的错误，请实现对应的特性，或者派生对应的特性
         9. 对于未定义的函数，结构体，全局变量，宏，生成对应的定义
         10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
-        11. 对于c语言的宏定义，需要转换成rust的宏定义，不要使用rust函数替代宏定义，使用宏的时候注意添加!符号
-        12. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
-        待改错内容：{template+'//编译器错误信息：'+compile_error}
+        11. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
+        * 待改错内容：{template+'//编译器错误信息：'+compile_error}
     """
 
 def get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details, source_context):

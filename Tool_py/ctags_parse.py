@@ -11,11 +11,35 @@ def generate_ctags(c_file, tags_file='tags.json'):
     # 生成 ctags 标签文件
     subprocess.run(['ctags', '-R', '--c-kinds=+pxd', '--fields=+S', '--extras=+q', '--output-format=json', '-f', tags_file, c_file], check=True)
 
+def find_matching_brace(content, start_pos):
+    stack = []
+    for i, char in enumerate(content[start_pos:], start=start_pos):
+        if char == '{':
+            stack.append(char)
+        elif char == '}':
+            if stack:
+                stack.pop()
+            if not stack:
+                return i
+    return -1
+
+def find_struct(content, pattern):
+    match = re.search(re.escape(pattern), content)
+    if match:
+        start_pos = match.end() - 1
+        end_pos = find_matching_brace(content, start_pos)
+        if end_pos != -1:
+            struct_def = content[match.start():end_pos + 1]
+            return struct_def
+    return None
+
+
 def parse_ctags_json(filename, c_file):
     structs = set()
     globals = set()
     macros = set()
     typedefs = set()
+    enums = set()
 
     with open(c_file, 'r') as f:
         content = f.read()
@@ -27,9 +51,9 @@ def parse_ctags_json(filename, c_file):
                 continue
             pattern = tag.get('pattern', '').strip('/^$/')
             if tag['kind'] == 'struct':
-                match = re.search(re.escape(pattern) + r'[^}]*};', content, re.DOTALL)
-                if match:
-                    structs.add(match.group(0))
+                struct_def = find_struct(content,pattern)
+                if struct_def:
+                    structs.add(struct_def)
             elif tag['kind'] == 'variable':
                 if pattern.endswith(';'):
                     globals.add(pattern)
@@ -48,20 +72,24 @@ def parse_ctags_json(filename, c_file):
                     match = re.search(re.escape(pattern) + r'[^;]*;', content)
                     if match:
                         typedefs.add(match.group(0))
+            elif tag['kind'] == 'enum':
+                    matches = re.findall(re.escape(pattern) + r'[^;]*;', content)
+                    for match in matches:
+                        enums.add(match)
 
-    return list(structs), list(globals), list(macros), list(typedefs)
+    return list(structs), list(globals), list(macros), list(typedefs),list(enums)
 
 def extract_info_from_c_file(c_file):
     tags_file = 'tags.json'
     generate_ctags(c_file, tags_file)
-    structs, globals, macros, typedefs = parse_ctags_json(tags_file, c_file)
+    structs, globals, macros, typedefs,enums = parse_ctags_json(tags_file, c_file)
     if os.path.exists(tags_file):
         os.remove(tags_file)
-    return f"\n\nStructs: {structs}\n\nGlobals: {globals}\n\nMacros: {macros}\n\nTypedefs: {typedefs}"
+    return f"\n\nStructs: {structs}\n\nGlobals: {globals}\n\nMacros: {macros}\n\nTypedefs: {typedefs}\n\nEnums: {enums}"
 
 if __name__ == '__main__':
     # 示例用法
-    c_file = '../tmp/test/test-binomial-heap.c'
+    c_file = '/home/mins01/Test1/tmp/src/tinyexpr.c'
     
     # 提取信息
     result = extract_info_from_c_file(c_file)

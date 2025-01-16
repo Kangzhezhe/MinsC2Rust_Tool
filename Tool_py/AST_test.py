@@ -14,7 +14,7 @@ print(f"fake_libc_include_path: {fake_libc_include_path}")
 # 查找函数调用的访问者类
 class FunctionCallVisitor(c_ast.NodeVisitor):
     def __init__(self):
-        self.function_calls = []
+        self.function_calls_names = set()
         self.current_function = None
         self.function_stack = []
 
@@ -26,7 +26,8 @@ class FunctionCallVisitor(c_ast.NodeVisitor):
         self.current_function = self.function_stack[-1] if self.function_stack else None
 
     def visit_FuncCall(self, node):
-        self.function_calls.append((node, node.coord.line, self.current_function))
+        if isinstance(node.name, c_ast.ID):
+            self.function_calls_names.add(node.name.name)
         self.generic_visit(node)
 
 
@@ -166,22 +167,25 @@ class FileScopeFunctionPointerVisitor(c_ast.NodeVisitor):
         self.global_function_pointers = defaultdict(list)  # 每个函数的全局依赖
         self.current_function = None  # 当前函数名
         self.local_symbols = set()  # 当前函数体内定义的局部符号
-        self.excluded_functions = ['alloc_test_malloc', 'alloc_test_free', 'alloc_test_calloc', 'alloc_test_strdup', 'alloc_test_realloc','alloc_test_set_limit']
+        self.excluded_functions = ['alloc_test_malloc', 'alloc_test_free', 'alloc_test_calloc', 'alloc_test_strdup', 'alloc_test_realloc','alloc_test_set_limit','alloc_test_get_allocated']
+        self.in_function_body = False  # 标志位，表示是否在函数体内
 
     def visit_FuncDef(self, node):
         """
         处理函数定义，收集函数体内的全局函数依赖。
         """
+        self.in_function_body = True  # 进入函数体
         self.current_function = node.decl.name
         self.local_symbols = set()  # 重置局部符号
         self.collect_local_symbols(node.body)  # 收集局部变量
         self.generic_visit(node)  # 遍历函数体
+        self.in_function_body = False  # 退出函数体
 
     def visit_ID(self, node):
         """
         捕获函数体内所有出现的标识符（包括函数指针）。
         """
-        if self.current_function is None:
+        if not self.in_function_body or self.current_function is None:
             return
 
         identifier = node.name
@@ -227,11 +231,17 @@ def get_global_function_pointer_dependencies(filenames):
         fc_visitor = FileScopeFunctionPointerVisitor(defined_functions)
         fc_visitor.visit(ast)
 
+        fnc_visitor = FunctionCallVisitor()
+        fnc_visitor.visit(ast)
+
         for func_name, pointers in fc_visitor.global_function_pointers.items():
-            dependencies[func_name] = list(set(pointers))  # 对依赖去重
+            filtered_pointers = [pointer for pointer in pointers if pointer not in fnc_visitor.function_calls_names]
+            if filtered_pointers:
+                dependencies[func_name] = list(set(filtered_pointers))  # 对依赖去重
+
 
     return dependencies
 
 if __name__ == "__main__":
-    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test1/tmp/src/tinyexpr.c'])
+    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test1/tmp/test/test-rb-tree.c'])
     print(json.dumps(dependencies, indent=4))

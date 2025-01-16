@@ -85,7 +85,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     max_history_length = params['max_history_length']
     max_history_limit_tokens = params['max_history_limit_tokens']
     compile_error = ''
-    last_compile_error = ''
     max_json_insert_retries = params['max_json_insert_retries']
     if len(child_funs_c_list) > 1:
         max_regenerations = 0
@@ -101,13 +100,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         if retry_count < max_retries:
             with open(os.path.join(tmp_dir,'temp.rs'), 'w') as f:
                 f.write(template)
-            last_compile_error = compile_error
             compile_error = run_command(f"rustc -Awarnings {os.path.join(tmp_dir,'temp.rs')}")
             delete_file_if_exists('temp')
             compile_error = filter_toolchain_errors(compile_error)
-            if compile_error != '' and compile_error1 != '' and last_compile_error == compile_error and retry_count != 0:
-                retry_count = max_retries
-                continue
             debug("compile_error:", compile_error)
             
             debug('conversation_history len:', len(conversation_history))
@@ -122,7 +117,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template, compile_error)
+                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details)
                 debug(f"Prompt length: {len(prompt1)}")
                 if len(prompt1) < max_history_limit_tokens:
                     i = 0

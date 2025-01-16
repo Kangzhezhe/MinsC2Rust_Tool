@@ -13,7 +13,6 @@ def get_response_deepseek(prompt,temperature=1):
             {"role": "user", "content": prompt},
         ],
         stream=False,
-        temperature=temperature,
         max_tokens=8192
     )
 
