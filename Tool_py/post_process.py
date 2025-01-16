@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
     llm_model = "qwen"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
+    sorted_funcs_depth,funcs_childs,include_dict,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
@@ -225,7 +225,7 @@ if __name__ == "__main__":
         with open(f, 'r') as file:
             data.append(json.load(file))
     
-    data_manager = DataManager(source_path,include_dict=include_dict) 
+    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs) 
 
 
     post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only)

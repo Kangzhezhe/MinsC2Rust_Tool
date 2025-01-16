@@ -117,7 +117,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details)
+                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,data_manager.all_pointer_funcs)
                 debug(f"Prompt length: {len(prompt1)}")
                 if len(prompt1) < max_history_limit_tokens:
                     i = 0
@@ -514,7 +514,7 @@ async def main():
     # llm_model = "qwen"
     llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
+    sorted_funcs_depth,funcs_childs,include_dict,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
@@ -557,7 +557,7 @@ async def main():
         with open(f, 'r') as file:
             data.append(json.load(file))
     
-    data_manager = DataManager(source_path,include_dict=include_dict)   
+    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs)   
 
 
 

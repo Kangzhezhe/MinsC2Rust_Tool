@@ -34,11 +34,13 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         1. 待转换的函数源代码内容：{source_context}
     """
 
-def get_error_fixing_prompt(template, compile_error,before_details):
+def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_funcs):
     return f"""
         Prompt:
         帮我修改以下rust代码中出现的编译错误
         * 要求：
+        0. 这些函数不允许修改，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
+        {all_pointer_funcs}
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
         3. 直接返回所有修改后的代码，不要解释

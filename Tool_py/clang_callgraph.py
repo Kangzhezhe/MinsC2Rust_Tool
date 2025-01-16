@@ -491,6 +491,11 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     # if cfg['ask']:
     #     ask_and_print_callgraph()
 
-    return result_funcs_depth,result_funcs_child,include_dirs
+    
+    all_pointer_funcs = set()
+    for values in dependencies.values():
+        all_pointer_funcs.update(values)
+
+    return result_funcs_depth,result_funcs_child,include_dirs,all_pointer_funcs
 if __name__ == '__main__':
     clang_callgraph()

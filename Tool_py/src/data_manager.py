@@ -2,10 +2,11 @@ import os
 import json
 
 class DataManager:
-    def __init__(self, source_path,include_dict):
+    def __init__(self, source_path,include_dict,all_pointer_funcs):
         self.data = []
         self.source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]
         self.include_dict = include_dict
+        self.all_pointer_funcs = all_pointer_funcs
         for f in source_path:
             with open(f, 'r') as file:
                 self.data.append(json.load(file))
