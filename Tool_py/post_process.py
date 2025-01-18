@@ -158,8 +158,8 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                         for sub_key, sub_value in value.items():
                             if sub_key in first_lines[key]:
                                 if sub_key == 'extra' and results[key].get(sub_key, '') != '':
-                                    results[key][sub_key] = remove_function_definitions(sub_value)
-                                    # results[key][sub_key] = sub_value
+                                    # results[key][sub_key] = remove_function_definitions(sub_value)
+                                    results[key][sub_key] = sub_value
                     child_path = get_source_path(key, src_names)
                     with open(child_path, 'w') as file:
                         file.write(get_content(key, results))
