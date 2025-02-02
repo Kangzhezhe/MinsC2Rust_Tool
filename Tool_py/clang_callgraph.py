@@ -450,15 +450,14 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                     if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name):
                         funcs_child[func].add(pretty_print(child)) 
         
-        # sorted_funcs_depth = dict(sorted(funcs_depth.items(), key=lambda item: item[1], reverse=True))
         funcs_child = {
             extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
             for k, vs in funcs_child.items() if extract_function_names(k)
         }
 
-        # for func_name, children in funcs_child.items():
-        #     if func_name in dependencies:
-        #         funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
+        for func_name, children in funcs_child.items():
+            if func_name in dependencies:
+                funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
 
         sorted_funcs_depth = analyze_function_calls(funcs_child)
         sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name)}
@@ -495,6 +494,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     all_pointer_funcs = set()
     for values in dependencies.values():
         all_pointer_funcs.update(values)
+
 
     return result_funcs_depth,result_funcs_child,include_dirs,all_pointer_funcs
 if __name__ == '__main__':

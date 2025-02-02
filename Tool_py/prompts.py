@@ -11,10 +11,11 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         10. 对于需要clone的类，结构体，实现clone方法
         11. 确保实现的函数功能的正确性，逻辑上与对应的c函数一致，对于测试函数，确保测试用例覆盖的情况下，测试通过
         12. 把测试用例中测试低内存场景的代码全部去掉，比如：Test low memory scenarios (failed malloc)，去掉所有相关的代码，去掉alloc_test_set_limit定义及相关函数 
-        13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型
+        13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型，不要用 struct Data_value 而是用泛型T，函数指针用fn（T...）->T 的格式
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
         16. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
+        17. 保留功能性的注释
     """
     
 
@@ -39,8 +40,7 @@ def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_f
         Prompt:
         帮我修改以下rust代码中出现的编译错误
         * 要求：
-        0. 这些函数不允许修改，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
-        {all_pointer_funcs}
+        0. 部分函数不允许修改，已在注释中说明了，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
         3. 直接返回所有修改后的代码，不要解释
@@ -52,6 +52,7 @@ def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_f
         9. 对于未定义的函数，结构体，全局变量，宏，生成对应的定义
         10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
         11. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
+        12. 保留功能性的注释
         * 待改错内容：{template+'//编译器错误信息：'+compile_error}
     """
 
@@ -142,7 +143,7 @@ def generate_extra_prompt(first_lines, source, child_source, all_child_func_list
 文件调用关系是{source}调用了{child_source}。
 请补充{source}的extra部分，{source}用到的子函数有：{all_child_func_list}，使用use的外部导入方式use test_project::{child_source}.replace('-', '_')::{{用到的函数：{all_child_func_list}；其他用到的函数，其他用到的结构体，全局变量，宏定义}}。
 导入{source}需要的所有元素，包括函数和全局定义，{source}文件不需要额外实现任何定义，只需要从外部导入。
-返回格式为{source}的所有非函数部分代码，不要返回任何其他的代码，不要对结果做任何解释。extra字段的值是导入模块语句，全局变量，结构体定义、宏等，不包含任何如fn func(){{...}}的任何函数或表达式或函数声明。
+返回格式为{source}的所有非函数部分代码，不要返回任何其他的代码，不要对结果做任何解释。extra字段的值是导入模块语句，全局变量，结构体定义、宏等，不包含任何如函数函数声明或定义。
 """
 
 
@@ -161,8 +162,8 @@ def fix_extra_prompt(prompt, response, source, child_source, test_error):
 extra字段不要出现任何函数如fn func(){{...}}，我的子文件中的所有函数已经存在完整的定义，不要帮我定义任何函数。
 返回格式示例，请严格按照该格式返回：
 {{
-    "{source}": {{"extra": "导入模块语句，原有的extra，注意：不包含任何函数定义或表达式，如果出现redefine的报错，删除这个字段中出现的定义"}},
-    "file1": {{"extra": "导入模块语句，声明为pub的全局变量，结构体定义、宏等，注意：不包含任何函数定义或表达式，实现trait时不需要pub" }}
+    "{source}": {{"extra": "导入模块语句，原有的extra，注意：不包含任何函数定义或表达式，如果出现redefine的报错，删除这个字段中出现的函数定义"}},
+    "file1": {{"extra": "导入模块语句，声明为pub的全局变量，结构体定义、宏等，注意：不包含任何函数定义或表达式，实现trait时不需要pub,如果出现redefine的报错，删除这个字段中出现的函数定义" }}
 }}
 {source}的extra不要出现其他文件file1中相同的任何定义，确保所有的定义都是唯一的，不要出现重复定义，只修改作用域与导入模块，不定义任何函数，结构体，全局变量。
 """

@@ -218,6 +218,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 with open(os.path.join(tmp_dir,'processed_all_files.rs'), 'w') as f:
                     f.write(output_content)
                 results_copy = copy.deepcopy(results)
+                
                 temp_results = {k: v for k, v in function_content_dict.items() if data_manager.get_source_name_by_func_name(k) in all_files}
                 extra_content = '\n'.join(v for k, v in function_content_dict.items() if k not in temp_results and k != 'main')
                 for k, v in temp_results.items():
@@ -230,6 +231,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if results_copy[source_name].get(func_name, '') == '':
                     results_copy[source_name][func_name] = ''
                 results_copy[source_name][func_name] += extra_content
+
 
                 # if source_name in src_names:
                 #     results[source_name]['extra'] = non_function_content
