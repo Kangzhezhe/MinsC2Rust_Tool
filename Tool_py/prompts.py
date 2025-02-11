@@ -15,7 +15,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
         16. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
-        17. 保留功能性的注释
+        17. 保留功能性的注释，可以添加该函数输入输出功能的注释
     """
     
 
@@ -35,12 +35,12 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         1. 待转换的函数源代码内容：{source_context}
     """
 
+# 0. 部分函数不允许修改，已在注释中说明了，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
 def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_funcs):
     return f"""
         Prompt:
         帮我修改以下rust代码中出现的编译错误
         * 要求：
-        0. 部分函数不允许修改，已在注释中说明了，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
         3. 直接返回所有修改后的代码，不要解释
@@ -52,7 +52,8 @@ def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_f
         9. 对于未定义的函数，结构体，全局变量，宏，生成对应的定义
         10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
         11. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数
-        12. 保留功能性的注释
+        12. 保留所有的注释
+        13. 不要定义新的函数，只需要修改已有的函数
         * 待改错内容：{template+'//编译器错误信息：'+compile_error}
     """
 

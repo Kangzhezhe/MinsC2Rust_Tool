@@ -13,7 +13,9 @@ def get_response_deepseek(prompt,temperature=1):
             {"role": "user", "content": prompt},
         ],
         stream=False,
-        max_tokens=8192
+        max_tokens=8192,
+        timeout=10000,
+        temperature=temperature
     )
 
     return response.choices[0].message.content

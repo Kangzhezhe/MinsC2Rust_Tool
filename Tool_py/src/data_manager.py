@@ -62,11 +62,11 @@ class DataManager:
     def get_result(self, func_name, results):
         for k, v in results.items() :
             if func_name in v and k in self.all_include_files:
-                comment = "// 该函数不允许修改，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能\n"
-                if func_name  in self.all_pointer_funcs:
-                    return v[func_name].replace('\n', f'\n{comment}', 1)
-                else:
-                    return v[func_name]
+                # comment = "// 该函数不允许修改，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能\n"
+                # if func_name  in self.all_pointer_funcs:
+                #     return v[func_name].replace('\n', f'\n{comment}', 1)
+                # else:
+                return v[func_name]
         return ''
 
     def get_child_context(self, func_name, results, funcs_child):

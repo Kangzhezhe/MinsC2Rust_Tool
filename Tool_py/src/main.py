@@ -260,7 +260,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     # all_files = data_manager.all_include_files
                     while True:
                         debug(f"Prompt length: {len(prompt1)}")
-                        response = generate_response(prompt1,llm_model,0.2)
+                        response = generate_response(prompt1,llm_model,0)
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
                         try:
@@ -514,6 +514,7 @@ async def main():
 
     # llm_model = "local"
     llm_model = "qwen"
+    # llm_model = "zhipu"
     # llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
@@ -535,9 +536,11 @@ async def main():
     #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
     #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
     #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
+    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
     # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray']
-    # test_names = ['test-compare-functions','test-sortedarray']
+    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []

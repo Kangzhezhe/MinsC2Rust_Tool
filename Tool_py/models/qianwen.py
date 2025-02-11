@@ -8,7 +8,7 @@ client = OpenAI(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
-def get_response_qianwen(prompt, response_format='text', temperature=1):
+def get_response_qianwen(prompt, response_format='text', temperature=0):
     try:
         if response_format == 'json':
             completion = client.chat.completions.create(
