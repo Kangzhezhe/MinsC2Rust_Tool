@@ -87,9 +87,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     compile_error = ''
     max_json_insert_retries = params['max_json_insert_retries']
     if len(child_funs_c_list) > 1:
-        max_regenerations = 0
+        max_regenerations = 1
     else:
-        max_regenerations = min(2 + depth, params['max_regenerations'])
+        max_regenerations = min(3 + depth, params['max_regenerations'])
 
     retry_count = 0
     regenerate_count = 0
@@ -145,28 +145,37 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 debug("##################################################################################################")
 
                 if all_files == set():
-                    for func in all_child_func_list:
-                        temp_func = data_manager.get_all_parent_functions(func, funcs_child)
-                        if temp_func != set():
-                            extended_funcs = [f for f in temp_func if f not in all_child_func_list and data_manager.get_result(f,results) != '']
-                            extended_child_funcs = set()
-                            for parent_func in extended_funcs:
-                                child_funcs = data_manager.get_all_child_functions(parent_func, funcs_child)
-                                extended_child_funcs = extended_child_funcs.union(child_funcs)
-                            all_child_func_list.extend(extended_funcs)
-                            all_child_func_list.extend([func for func in extended_child_funcs if func not in all_child_func_list and data_manager.get_result(func,results) != ''])
+                    # for func in all_child_func_list:
+                    #     temp_func = data_manager.get_all_parent_functions(func, funcs_child)
+                    #     if temp_func != set():
+                    #         extended_funcs = [f for f in temp_func if f not in all_child_func_list and data_manager.get_result(f,results) != '']
+                    #         extended_child_funcs = set()
+                    #         for parent_func in extended_funcs:
+                    #             child_funcs = data_manager.get_all_child_functions(parent_func, funcs_child)
+                    #             extended_child_funcs = extended_child_funcs.union(child_funcs)
+                    #         all_child_func_list.extend(extended_funcs)
+                    #         all_child_func_list.extend([func for func in extended_child_funcs if func not in all_child_func_list and data_manager.get_result(func,results) != ''])
+                    
+                    extended_child_funcs = set()
+                    for parent_func in all_child_func_list:
+                        child_funcs = data_manager.get_all_child_functions(parent_func, funcs_child)
+                        extended_child_funcs = extended_child_funcs.union(child_funcs)
+                    all_child_func_list.extend([func for func in extended_child_funcs if func not in all_child_func_list and data_manager.get_result(func,results) != ''])
+
 
                     for func in all_child_func_list:
                         temp_file =data_manager.get_source_name_by_func_name(func)
                         if temp_file != '':
                             all_files.add(temp_file)
+                all_files_list = list(all_files)
+                logger.info('all_files_list: ' + str(all_files_list))
                 
                 all_function_lines = '\n'.join(
                     value
                     for file, source in results.items()
                     if file in data_manager.all_include_files and file not in all_files
                     for key, value in source.items()
-                )
+                ) + '\n'
 
                 all_function_lines1 = all_function_lines + '\n'.join(
                     value
@@ -226,12 +235,22 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     name = source_names[i]
                     if name not in results_copy:
                         results_copy[name] = {}
-                    results_copy[name][k] = v
+                    if k not in data_manager.all_pointer_funcs:
+                        results_copy[name][k] = v
+                    elif k != func_name and results_copy[name][k].replace(data_manager.comment,'').replace(" ", "").replace("\n", "") != v.replace(data_manager.comment,'').replace(" ", "").replace("\n", ""):
+                        logger.info(f"Function Pointer {k} has been modified, skipping...")
+                        import ipdb;ipdb.set_trace()
+                        retry_count = max_retries
+                        break
+                if retry_count == max_retries:
+                    continue
 
                 if results_copy[source_name].get(func_name, '') == '':
                     results_copy[source_name][func_name] = ''
                 results_copy[source_name][func_name] += extra_content
 
+                if func_name in data_manager.all_pointer_funcs:
+                    results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'\n{data_manager.comment}', 1)
 
                 # if source_name in src_names:
                 #     results[source_name]['extra'] = non_function_content
@@ -241,7 +260,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 first_lines = {}
                 if results_copy[source_name].get('extra', '') == '':
                     results_copy[source_name]['extra'] = ''
-                if len(all_files) > 1:
+
+                retry = 0
+                if len(all_files_list) == 1 and compile_error1 == '':
+                    non_function_content, _, _ = deduplicate_code(template,tmp_dir)
+                    results_copy[source_name]['extra'] = non_function_content
+                elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
                             first_lines[key] = {}
@@ -255,7 +279,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     task_prompt = get_task_prompt(non_function_content, first_lines)
                     debug('non_function_content:', non_function_content)
                     prompt1 = task_prompt
-                    retry = 0
+                    
                     # data_manager.get_include_indices_with_parent(test_source_name)
                     # all_files = data_manager.all_include_files
                     while True:
@@ -301,7 +325,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                             if compile_error2:
                                 retry+=1
                                 if retry>=max_json_insert_retries:
-                                    logger.info("Failed to parse JSON response, skiping...")
+                                    logger.info("Failed to parse JSON response, skipping...")
                                     break
                                 logger.info(f"Compilation failed for json processed_all_files.rs, retrying...") 
                                 prompt1 = get_json_fixing_prompt(task_prompt, response, compile_error2)
@@ -309,7 +333,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         except json.JSONDecodeError as e:
                             retry+=1
                             if retry>=max_json_insert_retries:
-                                logger.info("Failed to parse JSON response, skiping...")
+                                logger.info("Failed to parse JSON response, skipping...")
                                 break
                             logger.info("Failed to parse JSON response, regenerating...")
                             error_position = e.pos if hasattr(e, 'pos') else 'unknown'
@@ -318,9 +342,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                             prompt1 = get_json_parsing_fix_prompt(task_prompt, response, error_msg, error_position, error_content)
                             continue
                         break
-                elif len(all_files) == 1:
-                    results_copy[source_name]['extra'] = non_function_content
-                else :
+                else:
                     raise ValueError("all_files is not correct")
 
                 if retry>=max_json_insert_retries:
@@ -520,27 +542,27 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    source_path = test_path
-    source_path.extend(src_path)
+    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    # source_path = test_path
+    # source_path.extend(src_path)
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
-    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
-    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
-    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+    source_path = [
+        os.path.join(tmp_dir,'src_json/compare-int.json'),
+        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+        os.path.join(tmp_dir,'src_json/compare-string.json'),
+        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+        os.path.join(tmp_dir,'src_json/sortedarray.json'),
+        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+        os.path.join(tmp_dir,'src_json/arraylist.json'),
+        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    ]
+    src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []

@@ -4,7 +4,7 @@ from models.zhipu import get_response_zhipu
 from models.local import get_response_from_model
 from models.qianwen import get_response_qianwen
 
-def generate_response(prompt,llm_model='qwen',temperature=1):
+def generate_response(prompt,llm_model='qwen',temperature=0):
     if llm_model == "local":
         response = asyncio.run(get_response_from_model(prompt))
     elif llm_model == "qwen":

@@ -455,9 +455,9 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             for k, vs in funcs_child.items() if extract_function_names(k)
         }
 
-        # for func_name, children in funcs_child.items():
-        #     if func_name in dependencies:
-        #         funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
+        for func_name, children in funcs_child.items():
+            if func_name in dependencies:
+                funcs_child[func_name] = list(set(children).union(dependencies[func_name]))
 
         sorted_funcs_depth = analyze_function_calls(funcs_child)
         sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name)}

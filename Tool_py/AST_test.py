@@ -14,7 +14,7 @@ print(f"fake_libc_include_path: {fake_libc_include_path}")
 # 查找函数调用的访问者类
 class FunctionCallVisitor(c_ast.NodeVisitor):
     def __init__(self):
-        self.function_calls_names = set()
+        self.function_calls = defaultdict(list)
         self.current_function = None
         self.function_stack = []
 
@@ -27,7 +27,7 @@ class FunctionCallVisitor(c_ast.NodeVisitor):
 
     def visit_FuncCall(self, node):
         if isinstance(node.name, c_ast.ID):
-            self.function_calls_names.add(node.name.name)
+            self.function_calls[self.current_function].append(node.name.name)
         self.generic_visit(node)
 
 
@@ -235,13 +235,12 @@ def get_global_function_pointer_dependencies(filenames):
         fnc_visitor.visit(ast)
 
         for func_name, pointers in fc_visitor.global_function_pointers.items():
-            filtered_pointers = [pointer for pointer in pointers if pointer not in fnc_visitor.function_calls_names]
+            filtered_pointers = [pointer for pointer in pointers if pointer not in fnc_visitor.function_calls.get(func_name, [])]
             if filtered_pointers:
                 dependencies[func_name] = list(set(filtered_pointers))  # 对依赖去重
-
 
     return dependencies
 
 if __name__ == "__main__":
-    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test1/tmp/test/test-rb-tree.c'])
+    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test_qwen/tmp/test/test-sortedarray.c'])
     print(json.dumps(dependencies, indent=4))

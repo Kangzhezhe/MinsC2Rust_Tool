@@ -7,6 +7,7 @@ class DataManager:
         self.source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]
         self.include_dict = include_dict
         self.all_pointer_funcs = all_pointer_funcs
+        self.comment = "// 注意：该函数不允许修改，因为工程中其他文件中的函数也调用了他们，如果修改了，会影响其他文件内函数的功能，完整原样返回该函数\n"
         for f in source_path:
             with open(f, 'r') as file:
                 self.data.append(json.load(file))
@@ -62,9 +63,8 @@ class DataManager:
     def get_result(self, func_name, results):
         for k, v in results.items() :
             if func_name in v and k in self.all_include_files:
-                # comment = "// 该函数不允许修改，因为别的工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能\n"
                 # if func_name  in self.all_pointer_funcs:
-                #     return v[func_name].replace('\n', f'\n{comment}', 1)
+                #     return v[func_name].replace('\n', f'\n{self.comment}', 1)
                 # else:
                 return v[func_name]
         return ''

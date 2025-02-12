@@ -10,24 +10,15 @@ client = OpenAI(
 
 def get_response_qianwen(prompt, response_format='text', temperature=0):
     try:
-        if response_format == 'json':
-            completion = client.chat.completions.create(
-                model="qwen-coder-plus", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-                # model="qwen-max", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-                messages=[
-                    {'role': 'user', 'content': prompt}],
-                response_format={"type": "json_object"},
-                temperature=temperature,
-            )
-        else:
-            completion = client.chat.completions.create(
-                model="qwen-coder-plus", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-                # model="qwen-max", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-                messages=[
-                    {'role': 'user', 'content': prompt}],
-                temperature=temperature,
-                timeout=1000
-            )
+        completion = client.chat.completions.create(
+            # model="qwen-coder-plus", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            model="deepseek-v3", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            # model="qwen-max", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            messages=[
+                {'role': 'user', 'content': prompt}],
+            temperature=temperature,
+            timeout=1000
+        )
         return completion.choices[0].message.content
     except Exception as e:
         # 捕获异常并返回错误消息
