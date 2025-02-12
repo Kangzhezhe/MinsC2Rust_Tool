@@ -12,7 +12,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         11. 确保实现的函数功能的正确性，逻辑上与对应的c函数一致，对于测试函数，确保测试用例覆盖的情况下，测试通过
         12. 把测试用例中测试低内存场景的代码全部去掉，比如：Test low memory scenarios (failed malloc)，去掉所有相关的代码，去掉alloc_test_set_limit定义及相关函数 
         13. 结构体内部数据类型尽量用泛型<T>或智能指针，避免使用具体类型，不要用 struct Data_value 而是用泛型T，函数指针用fn（T...）->T 的格式
-        14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }
+        14. 测试函数不能有非生命周期的泛型参数，测试函数的格式为：pub fn test_name() { ... }，严格保证测试函数中的代码正确性，循环的次数，assert的静态数量与动态运行数量与c语言测试用例一致
         15. 保证所有的函数功能正确，不要使用palceholder，确保所有的函数都是完整的，不要使用不完整的函数
         16. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数，对于random库函数，使用确定的数据代替
         17. 保留功能性的注释，可以添加该函数输入输出功能的注释
