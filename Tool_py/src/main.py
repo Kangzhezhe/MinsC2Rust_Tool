@@ -239,7 +239,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         results_copy[name][k] = v
                     elif k != func_name and results_copy[name][k].replace(data_manager.comment,'').replace(" ", "").replace("\n", "") != v.replace(data_manager.comment,'').replace(" ", "").replace("\n", ""):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
-                        import ipdb;ipdb.set_trace()
                         retry_count = max_retries
                         break
                 if retry_count == max_retries:
