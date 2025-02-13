@@ -240,10 +240,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         results_copy[name][k] = v
                     elif k != func_name and remove_comments_and_whitespace(results_copy[name][k]) != remove_comments_and_whitespace(v):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
-                        retry_count = max_retries
+                        retry_count = max_retries+1
                         warning = f"\n// 注意：一定不要修改函数体{k}的函数定义，否则会出错 \n"
                         break
-                if retry_count == max_retries:
+                if retry_count == max_retries+1:
                     continue
 
                 if results_copy[source_name].get(func_name, '') == '':
@@ -595,9 +595,9 @@ async def main():
     tmp_dir, output_dir, output_project_path,compile_commands_path,params,excluded_files= setup_project_directories(cfg)
 
     # llm_model = "local"
-    llm_model = "qwen"
+    # llm_model = "qwen"
     # llm_model = "zhipu"
-    # llm_model = "deepseek"
+    llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))

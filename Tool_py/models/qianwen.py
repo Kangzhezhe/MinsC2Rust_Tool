@@ -17,6 +17,7 @@ def get_response_qianwen(prompt, response_format='text', temperature=0):
             messages=[
                 {'role': 'user', 'content': prompt}],
             temperature=temperature,
+            timeout=1000,
         )
         return completion.choices[0].message.content
     except Exception as e:
