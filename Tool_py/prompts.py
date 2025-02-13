@@ -21,11 +21,11 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         如果出现函数指针参数或者类型不匹配的错误，只允许在使用函数指针的地方使用局部的临时函数来封装，不允许修改函数定义与所有相关注释：
         20. 类型转换建议，无论是变量定义还是函数参数与函数返回值，请严格按照以下要求转换，否则会导致类型不匹配错误：
             - int, char ,unsigned int, unsigned char, float, double, enum, bool等基本类型转换为 i32, i8, u32, u8, f32, f64 enum, bool等 Rust 基本类型。
-            - 对于 void * 等万能指针根据功能使用 T或者Vec<T>替代
+            - 对于 void * 等万能指针根据功能使用 T或者Vec<Rc<RefCell<T>>>替代，其中T是泛型类型
             - 忽略任何 typedef void * 定义，不要专门转换成struct xxValue 类型以免类型不兼容问题。
             - char* 字符串或void* 字符串类型转换为 Rust 的 String 类型。
-            - 一维动态数组 T* 转换为 Vec<T>。
-            - 二维动态数组 T** 转换为 Vec<Vec<T>>。
+            - 一维动态数组类型 T* （c语言中可能是void*），转换为 Vec<Rc<RefCell<T>>>，其中T是泛型类型。
+            - 二维动态数组类型 T* （c语言中可能是void*）转换为 Vec<Vec<Rc<RefCell<T>>>，其中T是泛型类型。
             - 函数指针用fn（T...）->T 的格式，其中的void* 参数转换成T 类型
     """
     

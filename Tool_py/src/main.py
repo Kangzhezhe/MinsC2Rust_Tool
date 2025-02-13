@@ -237,7 +237,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         results_copy[name] = {}
                     if k not in data_manager.all_pointer_funcs:
                         results_copy[name][k] = v
-                    elif k != func_name and results_copy[name][k].replace(data_manager.comment,'').replace(" ", "").replace("\n", "") != v.replace(data_manager.comment,'').replace(" ", "").replace("\n", ""):
+                    elif k != func_name and remove_comments_and_whitespace(results_copy[name][k]) != remove_comments_and_whitespace(v):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
                         retry_count = max_retries
                         break

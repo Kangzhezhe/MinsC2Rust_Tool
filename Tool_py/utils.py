@@ -116,6 +116,13 @@ def get_functions_by_line_numbers(definitions, line_numbers):
     return function_names
 
 
+def remove_comments_and_whitespace(text):
+    # 去除注释
+    text = re.sub(r'//.*?\n', '', text)
+    # 去除空格和换行符
+    return text.replace(" ", "").replace("\n", "")
+
+
 def deduplicate_code(all_function_lines,tmp_dir):
     with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
         f.write(all_function_lines)
