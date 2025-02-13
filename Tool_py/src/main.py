@@ -137,8 +137,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
 
                 for key, value in response_function_content_dict.items():
-                    if key in temp_function_content_dict:
-                        temp_function_content_dict[key] = value
+                    temp_function_content_dict[key] = value
                 temp_non_function_content = response_non_function_content
                 template = get_output_content(temp_non_function_content, temp_function_content_dict)
 
@@ -509,6 +508,8 @@ def get_parallel_groups(test_names, data_manager):
 
     # 初始化两个集合
     set1 = {}
+    if all_difference_values == set():
+        set1 = include_lists
     set2 = {}
 
     # 复制 difference_values 以便操作
@@ -622,6 +623,15 @@ async def main():
     source_path.extend(src_path)
 
     # source_path = [
+    #     os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
+    #     os.path.join(tmp_dir,'src_json/tinyexpr.json'),
+    #     os.path.join(tmp_dir,'test_json/test-utf8-decoder.json'),
+    #     os.path.join(tmp_dir,'src_json/utf8-decoder.json'),
+    # ]
+    # src_names = ['utf8-decoder','tinyexpr']
+    # test_names = ['test-utf8-decoder','test-tinyexpr']
+
+    # source_path = [
     #     os.path.join(tmp_dir,'src_json/compare-int.json'),
     #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
     #     os.path.join(tmp_dir,'src_json/compare-string.json'),
@@ -655,7 +665,6 @@ async def main():
             data.append(json.load(file))
     
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer)   
-
 
 
     results = {}

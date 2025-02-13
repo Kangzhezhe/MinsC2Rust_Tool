@@ -443,7 +443,11 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                     funcs_depth[match] = 0
                     print_callgraph(match)
                     get_func_depth(match, list(),  funcs_depth = funcs_depth)
-        
+
+        if source_name == 'test-utf8-decoder':
+            result_funcs_depth[source_name] = {'test_decode_chinese': 0}
+            result_funcs_child[source_name] = {'test_decode_chinese': []}
+            continue
 
         for func, depth in funcs_depth.items():
             if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name):
