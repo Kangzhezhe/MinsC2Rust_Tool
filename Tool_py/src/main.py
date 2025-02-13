@@ -96,6 +96,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
     added_funcs = set()
     all_files = set()
+    warning = ''
     while 1:
         if retry_count < max_retries:
             with open(os.path.join(tmp_dir,'temp.rs'), 'w') as f:
@@ -117,7 +118,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,data_manager.all_pointer_funcs)
+                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,[f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name])
                 debug(f"Prompt length: {len(prompt1)}")
                 if len(prompt1) < max_history_limit_tokens:
                     i = 0
@@ -129,7 +130,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     if i > 0:
                         prompt1 = 'history:\n' + prompt1
                         debug(f"Prompt length after history: {len(prompt1)}")
-                response = generate_response(prompt1,llm_model)
+                response = generate_response(prompt1+warning,llm_model)
                 debug(response)
                 template = response.replace("```rust", "").replace("```", "")
                 
@@ -240,6 +241,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     elif k != func_name and remove_comments_and_whitespace(results_copy[name][k]) != remove_comments_and_whitespace(v):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
                         retry_count = max_retries
+                        warning = f"\n// 注意：一定不要修改函数体{k}的函数定义，否则会出错 \n"
                         break
                 if retry_count == max_retries:
                     continue
@@ -307,7 +309,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                     if key != 'extra' and key != 'main'
                                 )
                                 
-                                all_function_lines += '\nfn main(){}'
+                                if 'fn main()' not in all_function_lines:
+                                    all_function_lines += '\nfn main(){}'
                                 output_content = all_function_lines
 
                                 for source in all_child_files:
@@ -386,6 +389,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             retry_count = 0
             added_funcs = set()
             all_files = set()
+            warning = ''
             
             with lock:
                 total_regenerate_count += 1
@@ -598,27 +602,27 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    source_path = test_path
-    source_path.extend(src_path)
+    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    # source_path = test_path
+    # source_path.extend(src_path)
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
-    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
-    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
-    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+    source_path = [
+        os.path.join(tmp_dir,'src_json/compare-int.json'),
+        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+        os.path.join(tmp_dir,'src_json/compare-string.json'),
+        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+        os.path.join(tmp_dir,'src_json/sortedarray.json'),
+        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+        os.path.join(tmp_dir,'src_json/arraylist.json'),
+        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    ]
+    src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []

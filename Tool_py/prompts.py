@@ -21,12 +21,9 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         如果出现函数指针参数或者类型不匹配的错误，只允许在使用函数指针的地方使用局部的临时函数来封装，不允许修改函数定义与所有相关注释：
         20. 类型转换建议，无论是变量定义还是函数参数与函数返回值，请严格按照以下要求转换，否则会导致类型不匹配错误：
             - int, char ,unsigned int, unsigned char, float, double, enum, bool等基本类型转换为 i32, i8, u32, u8, f32, f64 enum, bool等 Rust 基本类型。
-            - 对于 void * 等万能指针根据功能使用 T或者Vec<Rc<RefCell<T>>>替代，其中T是泛型类型
+            - 对于 void * 等万能指针根据功能使用 T或者Vec<T>替代，其中T是泛型类型
             - 忽略任何 typedef void * 定义，不要专门转换成struct xxValue 类型以免类型不兼容问题。
             - char* 字符串或void* 字符串类型转换为 Rust 的 String 类型。
-            - 一维动态数组类型 T* （c语言中可能是void*），转换为 Vec<Rc<RefCell<T>>>，其中T是泛型类型。
-            - 二维动态数组类型 T* （c语言中可能是void*）转换为 Vec<Vec<Rc<RefCell<T>>>，其中T是泛型类型。
-            - 函数指针用fn（T...）->T 的格式，其中的void* 参数转换成T 类型
     """
     
 
@@ -52,7 +49,7 @@ def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_f
         Prompt:
         帮我修改以下rust代码中出现的编译错误
         * 要求：
-        0. 部分函数不允许修改，已在注释中说明了，因为工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能，
+        0. 部分函数不允许修改，已在注释中说明了，如这些函数：{all_pointer_funcs}，因为工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能，
         如果出现函数指针参数或者类型不匹配的错误，只允许在使用函数指针的地方使用局部的临时函数来封装，不允许修改函数定义与所有相关注释：
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
