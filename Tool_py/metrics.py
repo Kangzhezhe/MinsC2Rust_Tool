@@ -1,8 +1,76 @@
 import os
 import json
 import csv
+import re
+import subprocess
 from tqdm import tqdm
 from run_tests import run_tests_and_calculate_rates
+
+
+def get_source_path(source, src_names,output_project_path):
+    if source in src_names:
+        return f"{output_project_path}/src/{source.replace('-','_')}.rs"
+    else:
+        return f"{output_project_path}/tests/{source.replace('-','_')}.rs"
+
+def calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir):
+    assert_def_path = "assert.rs"
+    with open(assert_def_path, 'r') as assert_file:
+        assert_content = assert_file.read()
+    dynamic_assert_dict = {}
+    static_assert_dict = {}
+    for source in results.keys():
+        if source in test_names:
+            test_source_path = get_source_path(source, src_names,output_project_path)
+
+            with open(test_source_path, 'r') as test_file:
+                test_content = test_file.read()
+            with open(test_source_path, 'w') as test_file:
+                test_file.write(assert_content + test_content)
+
+            static_assert_count = len(re.findall(r'assert!', test_content)) + len(re.findall(r'assert_eq!', test_content)) + len(re.findall(r'assert_ne!', test_content))
+            static_assert_dict[source] = static_assert_count
+
+            command = f'cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo test  --no-fail-fast --test {source.replace("-","_") } -- --nocapture'
+            test_result = subprocess.run(command, shell=True, check=False, text=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            output_str = test_result.stdout
+            matches = re.findall(r'Total assertions made: (\d+)', output_str)
+            if matches:
+                max_assertions = max(map(int, matches))
+            else:
+                max_assertions = 0
+
+            dynamic_assert_dict[source] = max_assertions
+            
+            with open(test_source_path, 'r') as test_file:
+                test_content = test_file.read()
+            test_content = test_content.replace(assert_content, '', 1)
+            with open(test_source_path, 'w') as test_file:
+                test_file.write(test_content)
+
+    # 输出结果到 CSV 文件
+    csv_file_path = os.path.join(output_dir, 'asserts_count.csv')
+    
+    with open(csv_file_path, 'w', newline='') as csvfile:
+        fieldnames = ['Source', 'Static Assert Count', 'Dynamic Assert Count']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for source in static_assert_dict.keys():
+            writer.writerow({
+                'Source': source,
+                'Static Assert Count': static_assert_dict[source],
+                'Dynamic Assert Count': dynamic_assert_dict.get(source, 0)
+            })
+    
+    print("断言统计已保存到 asserts_count.csv 文件")
+    print("\nStatic assert counts:")
+    print(static_assert_dict)
+    print("\nDynamic assert counts:")
+    print(dynamic_assert_dict)
+
+
+    
 
 def calculate_tests_pass_rates(output_project_path, output_dir,results, sorted_funcs_depth):
     passed_tests, failed_tests, overall_pass_rate, _ = run_tests_and_calculate_rates(output_project_path)

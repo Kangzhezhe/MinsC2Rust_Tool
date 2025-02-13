@@ -64,11 +64,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
+    pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
 
     if params['enable_english_prompt']:
         prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details,source_context)
     else:
-        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context, before_details,source_context)
+        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context, before_details,source_context,pointer_functions)
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
     logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
@@ -78,7 +79,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     text_remove = response.replace("```rust", "").replace("```", "")
 
     
-    max_retries = min(4+depth*2, params['max_retries'])
+    max_retries = min(5+depth*2, params['max_retries'])
     template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
     compile_error1 = ''
     conversation_history = []
@@ -87,7 +88,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     compile_error = ''
     max_json_insert_retries = params['max_json_insert_retries']
     if len(child_funs_c_list) > 1:
-        max_regenerations = 1
+        max_regenerations = 2
     else:
         max_regenerations = min(3 + depth, params['max_regenerations'])
 
@@ -118,7 +119,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,[f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name])
+                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,pointer_functions)
                 debug(f"Prompt length: {len(prompt1)}")
                 if len(prompt1) < max_history_limit_tokens:
                     i = 0

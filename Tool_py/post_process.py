@@ -2,17 +2,24 @@ import os
 import json
 import re
 from collections import defaultdict
+import subprocess
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from parse_config import read_config, setup_project_directories
 from models.llm_model import generate_response
-from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates
+from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count
 from merge_c_h import process_files
 from utils import run_command
 from prompts import generate_extra_prompt,fix_extra_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
 from src.data_manager import DataManager
+
+def get_source_path(source, src_names,output_project_path):
+    if source in src_names:
+        return f"{output_project_path}/src/{source.replace('-','_')}.rs"
+    else:
+        return f"{output_project_path}/tests/{source.replace('-','_')}.rs"
 
 def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False):
     if os.path.exists(os.path.join(output_dir, 'results.json')):
@@ -47,9 +54,17 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
     
     print("Running tests...")
+    
+    
+
     test_result = run_command(f'cd {output_project_path} && cargo test --no-fail-fast')
     print(test_result)
     calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
+
+    print("Calculating asserts count...")
+    calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir)
+    
+
 
 
 
@@ -64,21 +79,18 @@ def remove_function_definitions(extra):
     pattern = re.compile(r'^(pub\s+)?fn\s+\w+(\s*<.*?>)?\s*\(.*?\)\s*->\s*[\w:<>]+\s*(\{.*?\}|;)', re.DOTALL | re.MULTILINE)
     return pattern.sub('', extra)
 
+
 def post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model="qwen"):
     if source not in results:
         return
     print(f"Processing {source}...")
 
-    def get_source_path(source, src_names):
-        if source in src_names:
-            return f"{output_project_path}/src/{source.replace('-','_')}.rs"
-        else:
-            return f"{output_project_path}/tests/{source.replace('-','_')}.rs"
+    
 
-    if os.path.exists(get_source_path(source, src_names)):
+    if os.path.exists(get_source_path(source, src_names,output_project_path)):
         return
 
-    src_output_path = get_source_path(source, src_names)
+    src_output_path = get_source_path(source, src_names,output_project_path)
 
     def get_content(source, results, with_extra=True):
         if with_extra:
@@ -160,7 +172,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                                 if sub_key == 'extra' and results[key].get(sub_key, '') != '':
                                     # results[key][sub_key] = remove_function_definitions(sub_value)
                                     results[key][sub_key] = sub_value
-                    child_path = get_source_path(key, src_names)
+                    child_path = get_source_path(key, src_names,output_project_path)
                     with open(child_path, 'w') as file:
                         file.write(get_content(key, results))
             except json.JSONDecodeError as e:

@@ -13,6 +13,7 @@ def get_response_qianwen(prompt, response_format='text', temperature=0):
         completion = client.chat.completions.create(
             # model="qwen-coder-plus", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
             model="deepseek-v3", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            # model="deepseek-r1", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
             # model="qwen-max", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
             messages=[
                 {'role': 'user', 'content': prompt}],
