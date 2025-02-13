@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 from pprint import pprint
 import re
 from clang.cindex import CursorKind, Index, CompilationDatabase
@@ -465,25 +466,41 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
 
+
+    all_pointer_funcs = set()
+    for values in dependencies.values():
+        all_pointer_funcs.update(values)
+
+
     flattened_funcs_child = {}
+    flattened_funcs_child_without_fn_pointer = {}
     for source, funcs in result_funcs_child.items():
         for func_name, children in funcs.items():
             flattened_funcs_child[func_name] = children
+            flattened_funcs_child_without_fn_pointer[func_name] = [child for child in children if child not in all_pointer_funcs]
 
     all_data = data.copy() 
     all_data.update(data_src)
+    include_dirs_without_fn_pointer = copy.deepcopy(include_dirs)
     for file,file_childs in include_dirs.items():
         funcs = all_data.get(file, [])
         all_childs = set()
+        all_childs_without_fn_pointer = set()
         for func in funcs:
             if func in flattened_funcs_child:
                 all_childs.update(flattened_funcs_child[func])
+            if func in flattened_funcs_child_without_fn_pointer:
+                all_childs_without_fn_pointer.update(flattened_funcs_child_without_fn_pointer[func])
         excluded_childs = set()
+        excluded_childs_without_fn_pointer = set()
         for child in file_childs:
             all_funcs = all_data.get(child, [])
             if set(all_funcs).isdisjoint(set(all_childs)):
                 excluded_childs.add(child)
+            if set(all_funcs).isdisjoint(set(all_childs_without_fn_pointer)):
+                excluded_childs_without_fn_pointer.add(child)
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
+        include_dirs_without_fn_pointer[file] = [child for child in file_childs if child not in excluded_childs_without_fn_pointer]
                
     # if cfg['lookup']:
     #     print_callgraph(cfg['lookup'])
@@ -491,11 +508,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     #     ask_and_print_callgraph()
 
     
-    all_pointer_funcs = set()
-    for values in dependencies.values():
-        all_pointer_funcs.update(values)
-
-
-    return result_funcs_depth,result_funcs_child,include_dirs,all_pointer_funcs
+    return result_funcs_depth,result_funcs_child,include_dirs,include_dirs_without_fn_pointer,all_pointer_funcs
 if __name__ == '__main__':
     clang_callgraph()

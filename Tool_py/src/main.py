@@ -477,6 +477,78 @@ def load_checkpoint(output_dir, results={}, once_retry_count_dict={}, all_error_
     return {}, {}, {}
 
 
+def get_parallel_groups(test_names, data_manager):
+    # 获取每个 test_source_name 的包含列表
+    include_lists_without_fn_pointer = {test_name: set(data_manager.get_include_indices(test_name, without_fn_pointer=True)[1]) for test_name in test_names}
+    include_lists = {test_name: set(data_manager.get_include_indices(test_name)[1]) for test_name in test_names}
+    difference_values = {}
+    for test_name, include_list in include_lists.items():
+        if test_name in include_lists_without_fn_pointer:
+            difference = include_list - include_lists_without_fn_pointer[test_name]
+            if difference:
+                difference_values[test_name] = difference
+
+    # 计算所有差异值的并集
+    all_difference_values = set().union(*difference_values.values())
+
+    # 初始化两个集合
+    set1 = {}
+    set2 = {}
+
+    # 复制 difference_values 以便操作
+    remaining_values = difference_values.copy()
+
+    # 贪心算法：优先选择包含最多 all_difference_values 元素的项
+    while all_difference_values:
+        best_test_name = None
+        best_value = set()
+        for test_name, value in remaining_values.items():
+            intersection = value & all_difference_values
+            if len(intersection) > len(best_value):
+                best_test_name = test_name
+                best_value = value
+
+        if best_test_name:
+            set1[best_test_name] = best_value
+            all_difference_values -= best_value
+            del remaining_values[best_test_name]
+        else:
+            break
+
+    # 将剩余的项放入 set2
+    set2 = remaining_values
+
+    print("Set 1:", set1)
+    print("Set 2:", set2)
+
+    # 找到可以并行处理的 test_source_name 组
+    def process_keys(keys, include_lists_without_fn_pointer):
+        parallel_groups = []
+        for key in keys:
+            if key in include_lists_without_fn_pointer:
+                include_list = include_lists_without_fn_pointer.pop(key)
+                group = {key}
+                group_include_list = include_list.copy()
+                to_remove = [key]
+                for other_test_name, other_include_list in list(include_lists_without_fn_pointer.items()):
+                    if group_include_list.isdisjoint(other_include_list):
+                        group.add(other_test_name)
+                        to_remove.append(other_test_name)
+                        group_include_list.update(other_include_list)  # 更新 group_include_list 以确保没有交集
+                for test_name in to_remove:
+                    include_lists_without_fn_pointer.pop(test_name, None)
+                parallel_groups.append(group)
+        return parallel_groups
+
+    # 处理 set1 和 set2 的键
+    parallel_groups_set1 = process_keys(set1.keys(), {k: v for k, v in include_lists_without_fn_pointer.items() if k in set1.keys()})
+    parallel_groups_set2 = process_keys(set2.keys(), {k: v for k, v in include_lists_without_fn_pointer.items() if k in set2.keys()})
+
+    # 合并结果
+    parallel_groups = parallel_groups_set1 + parallel_groups_set2
+
+    print("Parallel Groups:", parallel_groups)
+    return parallel_groups
 
 def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir, all_error_funcs_content, once_retry_count_dict, test_names, params):
     start_time = time.time()
@@ -484,24 +556,8 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
     lock = threading.Lock()
     global total_retry_count, total_regenerate_count, total_error_count
 
-    # 获取每个 test_source_name 的包含列表
-    include_lists = {test_name: set(data_manager.get_include_indices(test_name)[1]) for test_name in test_names}
-
-    # 找到可以并行处理的 test_source_name 组
-    parallel_groups = []
-    while include_lists:
-        test_name, include_list = include_lists.popitem()
-        group = {test_name}
-        group_include_list = include_list.copy()
-        to_remove = [test_name]
-        for other_test_name, other_include_list in list(include_lists.items()):
-            if group_include_list.isdisjoint(other_include_list):
-                group.add(other_test_name)
-                to_remove.append(other_test_name)
-                group_include_list.update(other_include_list)  # 更新 group_include_list 以确保没有交集
-        for test_name in to_remove:
-            include_lists.pop(test_name, None)
-        parallel_groups.append(group)
+    parallel_groups = get_parallel_groups(test_names, data_manager)
+    import ipdb; ipdb.set_trace()
 
     # 并行处理每个 test_source_name
     for group in parallel_groups:
@@ -538,7 +594,7 @@ async def main():
     # llm_model = "zhipu"
     # llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
+    sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
@@ -583,7 +639,7 @@ async def main():
         with open(f, 'r') as file:
             data.append(json.load(file))
     
-    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs)   
+    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer)   
 
 
 

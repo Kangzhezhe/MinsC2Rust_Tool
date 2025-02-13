@@ -2,18 +2,22 @@ import os
 import json
 
 class DataManager:
-    def __init__(self, source_path,include_dict,all_pointer_funcs):
+    def __init__(self, source_path,include_dict,all_pointer_funcs,include_dict_without_fn_pointer):
         self.data = []
         self.source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]
         self.include_dict = include_dict
+        self.include_dict_without_fn_pointer = include_dict_without_fn_pointer
         self.all_pointer_funcs = all_pointer_funcs
         self.comment = "// 注意：该函数不允许修改，因为工程中其他文件中的函数也调用了他们，如果修改了，会影响其他文件内函数的功能，完整原样返回该函数\n"
         for f in source_path:
             with open(f, 'r') as file:
                 self.data.append(json.load(file))
 
-    def get_all_source(self,source_name,all_files):
-        child_source = self.include_dict.get(source_name, [])
+    def get_all_source(self,source_name,all_files,without_fn_pointer=False):
+        if without_fn_pointer:
+            child_source = self.include_dict_without_fn_pointer.get(source_name, [])
+        else:
+            child_source = self.include_dict.get(source_name, [])
         for source in child_source:
             if source not in all_files:
                 all_files.append(source)
@@ -26,9 +30,9 @@ class DataManager:
                 self.get_parent_sources(parent, all_files)
 
     
-    def get_include_indices(self,test_source_name):
+    def get_include_indices(self,test_source_name,without_fn_pointer=False):
         all_include_files = [test_source_name]
-        self.get_all_source(test_source_name,all_include_files)
+        self.get_all_source(test_source_name,all_include_files,without_fn_pointer)
         include_files_indices = [self.source_names.index(file) for file in all_include_files if file in self.source_names]
         self.include_files_indices = include_files_indices
         self.all_include_files = all_include_files
