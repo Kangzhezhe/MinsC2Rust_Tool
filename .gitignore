@@ -11,3 +11,4 @@ llvm-project/
 Tool_py/__pycache__/
 __pycache__/
 Tool_py/streamlit1.27/
+func_result/*.json
