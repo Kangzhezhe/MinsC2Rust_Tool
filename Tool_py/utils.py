@@ -123,6 +123,10 @@ def remove_comments_and_whitespace(text):
     return text.replace(" ", "").replace("\n", "")
 
 
+def get_output_content(non_function_content, function_content_dict):
+    output_content = non_function_content + '\n' + '\n'.join(function_content_dict.values())
+    return output_content
+
 def deduplicate_code(all_function_lines,tmp_dir):
     with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
         f.write(all_function_lines)
@@ -136,8 +140,8 @@ def deduplicate_code(all_function_lines,tmp_dir):
     output_file_path = os.path.join(tmp_dir,'processed_file.rs')
     non_function_content, function_content_dict= extract_rust(json_file_path, source_file_path, output_file_path)
     non_function_content = ''.join(non_function_content)
-    
     non_function_content += '\n'
+
     output_content = non_function_content + '\n'+'\n'.join(function_content_dict.values())
     return non_function_content, function_content_dict,output_content
 

@@ -47,13 +47,13 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
 def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_funcs):
     return f"""
         Prompt:
-        帮我修改以下rust代码中出现的编译错误
+        帮我修改以下rust代码中出现的编译错误，只返回所有全局变量、结构体、全局变量、宏定义、枚举定义和被修改后的函数：
         * 要求：
         0. 部分函数不允许修改，已在注释中说明了，如这些函数：{all_pointer_funcs}，因为工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能，
         如果出现函数指针参数或者类型不匹配的错误，只允许在使用函数指针的地方使用局部的临时函数来封装，不允许修改函数定义与所有相关注释：
         1. 请不使用Markdown格式返回代码。
         2. 重复定义的错误直接删除报错的定义
-        3. 直接返回所有修改后的代码，不要解释
+        3. 直接返回修改后的代码，不要解释
         4. 不要改变报错的代码的功能
         5. 避免使用 `c_void、*mut、 *const` Box<dyn Any>，而是使用泛型<T>和特征约束来确保类型安全和性能
         6. 请确保功能代码的正确性
@@ -63,8 +63,14 @@ def get_error_fixing_prompt(template, compile_error,before_details,all_pointer_f
         10. 在变量声明时不需要使用 r# 前缀，在引用保留关键字作为标识符时，需要使用 r# 前缀，确保在变量声明和引用时正确使用 r# 前缀。
         11. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数，对于random库函数，使用确定的数据代替
         12. 保留所有的注释，不要删除任何注释
-        13. 不要定义新的函数，只需要修改已有的允许修改的函数
+        13. 不要定义新的函数，只需要修改已有的允许修改的函数，如果没有修改的函数的话，不需要返回，只返回全局变量，结构体，宏，枚举定义
+
         * 待改错内容：{template+'//编译器错误信息：'+compile_error}
+        * 返回格式：
+            <所有全局变量、结构体、全局变量、宏定义、枚举定义>
+            <pub fun func1(){{有改动的函数1}}>
+            <pub fun func2(){{有改动的函数2}}>
+            ...
     """
 
 def get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details, source_context):

@@ -130,9 +130,18 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     if i > 0:
                         prompt1 = 'history:\n' + prompt1
                         debug(f"Prompt length after history: {len(prompt1)}")
-                response = generate_response(prompt1+warning,llm_model)
+                response = generate_response(prompt1+warning,llm_model).replace("```rust", "").replace("```", "")
                 debug(response)
-                template = response.replace("```rust", "").replace("```", "")
+                response_non_function_content, response_function_content_dict, _ = deduplicate_code(response,tmp_dir)
+                temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
+
+                for key, value in response_function_content_dict.items():
+                    if key in temp_function_content_dict:
+                        temp_function_content_dict[key] = value
+                temp_non_function_content = response_non_function_content
+                template = get_output_content(temp_non_function_content, temp_function_content_dict)
+
+                # template = response
                 
                 # 保存对话历史
                 conversation_history.append({
@@ -595,34 +604,34 @@ async def main():
     tmp_dir, output_dir, output_project_path,compile_commands_path,params,excluded_files= setup_project_directories(cfg)
 
     # llm_model = "local"
-    # llm_model = "qwen"
+    llm_model = "qwen"
     # llm_model = "zhipu"
-    llm_model = "deepseek"
+    # llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    source_path = test_path
-    source_path.extend(src_path)
+    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    # source_path = test_path
+    # source_path.extend(src_path)
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
-    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
-    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
-    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+    source_path = [
+        os.path.join(tmp_dir,'src_json/compare-int.json'),
+        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+        os.path.join(tmp_dir,'src_json/compare-string.json'),
+        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+        os.path.join(tmp_dir,'src_json/sortedarray.json'),
+        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+        os.path.join(tmp_dir,'src_json/arraylist.json'),
+        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    ]
+    src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []
