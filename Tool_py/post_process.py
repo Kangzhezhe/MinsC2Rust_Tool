@@ -46,7 +46,7 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                 child_source = include_dict.get(source, [])
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
     
-    
+    print("Running tests...")
     test_result = run_command(f'cd {output_project_path} && cargo test --no-fail-fast')
     print(test_result)
     calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
