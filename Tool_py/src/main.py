@@ -261,9 +261,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     results_copy[source_name]['extra'] = ''
 
                 retry = 0
-                if len(all_files_list) == 1 and compile_error1 == '':
+                if len(all_files_list) == 1 and remove_comments_and_whitespace(compile_error1) == '':
                     non_function_content, _, _ = deduplicate_code(template,tmp_dir)
                     results_copy[source_name]['extra'] = non_function_content
+                elif remove_comments_and_whitespace(non_function_content) == '':
+                    pass
                 elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
@@ -557,7 +559,6 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
     global total_retry_count, total_regenerate_count, total_error_count
 
     parallel_groups = get_parallel_groups(test_names, data_manager)
-    import ipdb; ipdb.set_trace()
 
     # 并行处理每个 test_source_name
     for group in parallel_groups:
@@ -597,27 +598,27 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    source_path = test_path
-    source_path.extend(src_path)
+    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    # source_path = test_path
+    # source_path.extend(src_path)
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
-    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
-    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
-    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+    source_path = [
+        os.path.join(tmp_dir,'src_json/compare-int.json'),
+        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+        os.path.join(tmp_dir,'src_json/compare-string.json'),
+        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+        os.path.join(tmp_dir,'src_json/sortedarray.json'),
+        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+        os.path.join(tmp_dir,'src_json/arraylist.json'),
+        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    ]
+    src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []

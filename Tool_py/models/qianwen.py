@@ -16,8 +16,7 @@ def get_response_qianwen(prompt, response_format='text', temperature=0):
             # model="qwen-max", # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
             messages=[
                 {'role': 'user', 'content': prompt}],
-            temperature=temperature,
-            timeout=1000
+            temperature=temperature
         )
         return completion.choices[0].message.content
     except Exception as e:

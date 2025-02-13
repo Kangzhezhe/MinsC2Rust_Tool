@@ -38,10 +38,10 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
         返回格式：
         pub fn {child_funs_c}(args ...) ->(return type) {{...}}
         参考内容：
-        1. 已经转换的Rust子函数{child_funs}的定义：{child_context}
+        1. 已经转换的Rust函数{child_funs}的与相关rust代码定义：{child_context}
         2. 所有c语言全局变量、结构体、宏、枚举：{before_details}
         注意：
-        1. 从参考内容Rust子函数{child_funs}可直接调用，不给出定义。
+        1. 参考内容中的已经定义的Rust子函数{child_funs}、Rust全局变量、结构体、宏、枚举、use导入语句可直接调用，不重新给出定义。
         给定内容：
         1. 待转换的函数源代码内容：{source_context}
     """
@@ -123,14 +123,13 @@ def get_task_prompt(non_function_content, first_lines):
         任务 ： 
         1. 给定一个Rust的全局定义字符串：'{non_function_content}',
         2. 给定一个字典：{first_lines}
-        3. 将该字符串按指定字典的key进行分割。
-        4. 将分割后的内容放入字典的extra字段中。
-        5. 确保extra字段的值与同级的其他key的value相关,且extra字段只包含全局变量，结构体定义、宏等，不包含任何函数或表达式。
-        6. extra字段的值类型为字符串。
-        7. 返回处理后的JSON格式字符串，第二级的key只保留extra。
-        8. 返回结果必须是JSON格式的数据，不要包含其他格式的数据。
-        9. 不要对返回结果做任何解释。
-        10. 返回格式为：{{"key1":{{"extra":"value1(来自给定Rust全局定义的一部分，且与字典的同级其他value相关)"}}, "key2":{{"extra":"value2(给定Rust全局定义的一部分,且与字典的同级其他value相关)"}}...}}， value1与value2来自于给定的rust全局定义字符串。
+        3. 将该字符串按指定字典的 key 进行分割，并将分割后的内容分配放入字典的 extra 字段中。注意，只需分割并分配，不要复制多份插入，确保所有分割代码合并后与原全局定义字符串一致。
+        4. 确保extra字段的值与同级的其他key的value相关,且extra字段只包含全局变量，结构体定义、宏等，不包含任何函数或表达式。
+        5. extra字段的值类型为字符串。
+        6. 返回处理后的JSON格式字符串，第二级的key只保留extra。
+        7. 返回结果必须是JSON格式的数据，不要包含其他格式的数据。
+        8. 不要对返回结果做任何解释。
+        9. 返回格式为：{{"key1":{{"extra":"value1(来自给定Rust全局定义的一部分，且与字典的同级其他value相关)"}}, "key2":{{"extra":"value2(给定Rust全局定义的一部分,且与字典的同级其他value相关)"}}...}}， value1与value2来自于给定的rust全局定义字符串。
     """
 
 def get_json_fixing_prompt(task_prompt,response, compile_error2):
