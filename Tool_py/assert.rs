@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize};
 use std::sync::{Once, Mutex};
 
 // 定义全局计数器
@@ -23,7 +23,7 @@ fn initialize() {
 fn print_assert_counts() {
     println!(
         "Total assertions made: {}",
-        ASSERT_COUNT.load(Ordering::Relaxed)
+        ASSERT_COUNT.load(std::sync::atomic::Ordering::Relaxed)
     );
 }
 
@@ -40,7 +40,7 @@ impl Drop for PrintOnExit {
 macro_rules! assert {
     ($cond:expr) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if !$cond {
             panic!("assertion failed: {}", stringify!($cond));
         }
@@ -48,7 +48,7 @@ macro_rules! assert {
     }};
     ($cond:expr, $($arg:tt)+) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if !$cond {
             panic!($($arg)+);
         }
@@ -60,7 +60,7 @@ macro_rules! assert {
 macro_rules! assert_eq {
     ($left:expr, $right:expr) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let left_val = $left; // 将左侧表达式的值存储在局部变量中
         let right_val = $right; // 将右侧表达式的值存储在局部变量中
         let left = &left_val; // 创建对局部变量的引用
@@ -75,7 +75,7 @@ macro_rules! assert_eq {
     }};
     ($left:expr, $right:expr, $($arg:tt)+) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let left_val = $left; // 将左侧表达式的值存储在局部变量中
         let right_val = $right; // 将右侧表达式的值存储在局部变量中
         let left = &left_val; // 创建对局部变量的引用
@@ -94,7 +94,7 @@ macro_rules! assert_eq {
 macro_rules! assert_ne {
     ($left:expr, $right:expr) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let left_val = $left; // 将左侧表达式的值存储在局部变量中
         let right_val = $right; // 将右侧表达式的值存储在局部变量中
         let left = &left_val; // 创建对局部变量的引用
@@ -109,7 +109,7 @@ macro_rules! assert_ne {
     }};
     ($left:expr, $right:expr, $($arg:tt)+) => {{
         initialize();
-        ASSERT_COUNT.fetch_add(1, Ordering::Relaxed);
+        ASSERT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let left_val = $left; // 将左侧表达式的值存储在局部变量中
         let right_val = $right; // 将右侧表达式的值存储在局部变量中
         let left = &left_val; // 创建对局部变量的引用

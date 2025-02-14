@@ -166,10 +166,10 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
             'Source': test_source_name,
             'Pass Rate (with test)': 1 - missing_rates[test_source_name],
             'Pass count (with test)': pass_count_with_test,
-            'Total Pass count (with test)': total_funcs,
+            'Total count (with test)': total_funcs,
             'Pass Rate (without test)': 1 - missing_rates_func[test_source_name],
             'Pass count (without test)': pass_count_without_test,
-            'Total Pass count (without test)': total_filtered_funcs
+            'Total count (without test)': total_filtered_funcs
         })
 
     all_missing_rates = missing_count_all / total_funcs_all if total_funcs_all > 0 else 0
@@ -180,10 +180,10 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
         'Source': 'Overall',
         'Pass Rate (with test)': 1 - all_missing_rates,
         'Pass count (with test)': total_funcs_all - missing_count_all,
-        'Total Pass count (with test)': total_funcs_all,
+        'Total count (with test)': total_funcs_all,
         'Pass Rate (without test)': 1 - all_missing_rates_func,
         'Pass count (without test)': total_filtered_funcs_all - missing_filtered_count_all,
-        'Total Pass count (without test)': total_filtered_funcs_all
+        'Total count (without test)': total_filtered_funcs_all
     })
 
     # 将详细信息写入 CSV 文件
@@ -192,10 +192,10 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
             'Source', 
             'Pass Rate (with test)', 
             'Pass count (with test)', 
-            'Total Pass count (with test)', 
+            'Total count (with test)', 
             'Pass Rate (without test)', 
             'Pass count (without test)', 
-            'Total Pass count (without test)'
+            'Total count (without test)'
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
@@ -205,10 +205,10 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
                 'Source': row['Source'],
                 'Pass Rate (with test)': f"{row['Pass Rate (with test)']:.2%}",
                 'Pass count (with test)': row['Pass count (with test)'],
-                'Total Pass count (with test)': row['Total Pass count (with test)'],
+                'Total count (with test)': row['Total count (with test)'],
                 'Pass Rate (without test)': f"{row['Pass Rate (without test)']:.2%}",
                 'Pass count (without test)': row['Pass count (without test)'],
-                'Total Pass count (without test)': row['Total Pass count (without test)']
+                'Total count (without test)': row['Total count (without test)']
             })
     print("编译通过率统计已保存到 compile_pass_rate.csv 文件")
     print("\nPass rates (with test):")
