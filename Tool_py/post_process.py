@@ -9,7 +9,7 @@ from parse_config import read_config, setup_project_directories
 from models.llm_model import generate_response
 from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count
 from merge_c_h import process_files
-from utils import run_command
+from utils import deduplicate_code, run_command
 from prompts import generate_extra_prompt,fix_extra_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
@@ -171,7 +171,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                             if sub_key in first_lines[key]:
                                 if sub_key == 'extra' and results[key].get(sub_key, '') != '':
                                     # results[key][sub_key] = remove_function_definitions(sub_value)
-                                    results[key][sub_key] = sub_value
+                                    non_function_content, _,_ =  deduplicate_code(sub_value, tmp_dir)
+                                    results[key][sub_key] = non_function_content
+
                     child_path = get_source_path(key, src_names,output_project_path)
                     with open(child_path, 'w') as file:
                         file.write(get_content(key, results))
