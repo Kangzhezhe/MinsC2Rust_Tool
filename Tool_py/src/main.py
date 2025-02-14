@@ -131,7 +131,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     if i > 0:
                         prompt1 = 'history:\n' + prompt1
                         debug(f"Prompt length after history: {len(prompt1)}")
-                response = generate_response(prompt1+warning,llm_model).replace("```rust", "").replace("```", "")
+                response = generate_response(prompt1+warning,llm_model,retry_count*0.01).replace("```rust", "").replace("```", "")
                 debug(response)
                 response_non_function_content, response_function_content_dict, _ = deduplicate_code(response,tmp_dir)
                 temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
@@ -390,7 +390,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
             logger.info(f"Failed to compile {func_name} after {max_retries} attempts. Regenerating code...")
             debug(f"Prompt length: {len(prompt)}")
-            response = generate_response(prompt,llm_model)
+            response = generate_response(prompt,llm_model,0.1 * regenerate_count)
             debug(response)
             text_remove = response.replace("```rust", "").replace("```", "")
             template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
