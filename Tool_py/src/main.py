@@ -98,6 +98,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     added_funcs = set()
     all_files = set()
     warning = ''
+    response_function_content_dict = {}
     while 1:
         if retry_count < max_retries:
             with open(os.path.join(tmp_dir,'temp.rs'), 'w') as f:
@@ -116,10 +117,23 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     continue
                 logger.info(f"Compilation failed for {func_name}, retrying... {retry_count}/{max_retries}")
                 # history_prompt = "\n".join([f"Prompt: {entry['prompt']}\nResponse: {entry['response']}" for entry in conversation_history])
-                if params['enable_english_prompt']:
-                    prompt1 = get_error_fixing_prompt_english(template, compile_error)
+
+                if response_function_content_dict != {}:
+                    if func_name not in response_function_content_dict:
+                        response_function_content_dict[func_name] = ''
+                    temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
+                    new_function_content_dict = {key: temp_function_content_dict[key] for key in temp_function_content_dict if key in response_function_content_dict}
+                    template_prompt = get_output_content(temp_non_function_content, new_function_content_dict)
+                    new_function_content_dict = {key: temp_function_content_dict[key].lstrip().split('\n', 1)[0] for key in temp_function_content_dict if key not in response_function_content_dict}
+                    template_prompt += '// 以下是来自同文件的函数声明可以直接调用\n'
+                    template_prompt = get_output_content(template_prompt, new_function_content_dict)
                 else:
-                    prompt1 = get_error_fixing_prompt(template, compile_error,before_details,pointer_functions)
+                    template_prompt = template
+
+                if params['enable_english_prompt']:
+                    prompt1 = get_error_fixing_prompt_english(template_prompt, compile_error)
+                else:
+                    prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details,pointer_functions)
                 debug(f"Prompt length: {len(prompt1)}")
                 if len(prompt1) < max_history_limit_tokens:
                     i = 0
@@ -137,7 +151,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
 
                 for key, value in response_function_content_dict.items():
-                    temp_function_content_dict[key] = value
+                    if key in temp_function_content_dict:
+                        temp_function_content_dict[key] = value
+                    else:
+                        temp_function_content_dict[func_name] += value
+                response_function_content_dict = temp_function_content_dict
                 temp_non_function_content = response_non_function_content
                 template = get_output_content(temp_non_function_content, temp_function_content_dict)
 
@@ -228,6 +246,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     debug(f'added_funcs:{added_funcs}')
                     logger.info(f"Compilation failed for processed_all_files.rs, retrying...")
                     retry_count += 1
+                    response_function_content_dict = {}
                     with lock:
                         total_retry_count += 1
                     continue
@@ -275,8 +294,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if len(all_files_list) == 1 and remove_comments_and_whitespace(compile_error1) == '':
                     non_function_content, _, _ = deduplicate_code(template,tmp_dir)
                     results_copy[source_name]['extra'] = non_function_content
-                elif remove_comments_and_whitespace(non_function_content) == '':
-                    pass
+                    compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
+                    if compile_error2:
+                        retry = max_json_insert_retries
+                        logger.info(f"Compilation failed for json processed_all_files.rs, skipping...")
                 elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
@@ -305,35 +326,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                 if key in results_copy:
                                     results_copy[key]['extra'] = value.get('extra', '')
  
-                            compile_error2 = ''
-                            for file in all_files:
-                                all_child_files = [file]
-                                data_manager.get_all_source(file,all_child_files)
-
-                                all_function_lines = '\n'.join(
-                                    value
-                                    for file, source in results_copy.items()
-                                    if file in all_child_files
-                                    for key, value in source.items()
-                                    if key != 'extra' and key != 'main'
-                                )
-                                
-                                if 'fn main()' not in all_function_lines:
-                                    all_function_lines += '\nfn main(){}'
-                                output_content = all_function_lines
-
-                                for source in all_child_files:
-                                    if 'extra' in results_copy.get(source,[]):
-                                        output_content = results_copy[source]['extra'] + '\n' + output_content
-                                        
-
-                                with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
-                                    f.write(output_content)
-                                compile_error2 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir,'test_source.rs')}')
-
-                                delete_file_if_exists('test_source')
-                                if compile_error2:
-                                    break
+                            compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
                             debug(compile_error2)
                             if compile_error2:
                                 retry+=1
@@ -399,6 +392,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             added_funcs = set()
             all_files = set()
             warning = ''
+            response_function_content_dict = {}
             
             with lock:
                 total_regenerate_count += 1

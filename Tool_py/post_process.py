@@ -143,6 +143,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                             first_lines[child][sub_key] = f'注意： 该函数已经{child}文件中实现，直接导入，不要重复定义'
 
         prompt = generate_extra_prompt(first_lines, source, child_source, all_child_func_list)
+        
         response = generate_response(prompt, llm_model, temperature=0)
         template = response.replace("```rust", "").replace("```", "")
 
@@ -156,6 +157,8 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         while test_error.count("error") > 1:
             print(test_error)
             prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
+            if len(prompt_fix)>15000:
+                prompt_fix = prompt_fix[:15000]
             print(f"##################################################################################################")
             print(f"Prompt length: {len(prompt_fix)}")
             response = generate_response(prompt_fix, llm_model, temperature=0)

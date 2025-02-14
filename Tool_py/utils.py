@@ -9,6 +9,39 @@ from extract_rust_func import extract_rust
 import shutil
 
 import signal
+
+def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
+    compile_error2 = ''
+    for file in all_files:
+        all_child_files = [file]
+        data_manager.get_all_source(file, all_child_files)
+
+        all_function_lines = '\n'.join(
+            value
+            for file, source in results_copy.items()
+            if file in all_child_files
+            for key, value in source.items()
+            if key != 'extra' and key != 'main'
+        )
+
+        if 'fn main()' not in all_function_lines:
+            all_function_lines += '\nfn main(){}'
+        output_content = all_function_lines
+
+        for source in all_child_files:
+            if 'extra' in results_copy.get(source, []):
+                output_content = results_copy[source]['extra'] + '\n' + output_content
+
+        with open(os.path.join(tmp_dir, 'test_source.rs'), 'w') as f:
+            f.write(output_content)
+        compile_error2 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir, 'test_source.rs')}')
+
+        delete_file_if_exists('test_source')
+        if compile_error2:
+            break
+
+    return compile_error2
+
 def cleanup(tmp_dir):
     rm_tmp_dir = os.path.abspath(tmp_dir)
     def handler(sig, frame):
