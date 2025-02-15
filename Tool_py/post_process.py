@@ -9,7 +9,7 @@ from parse_config import read_config, setup_project_directories
 from models.llm_model import generate_response
 from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count
 from merge_c_h import process_files
-from utils import deduplicate_code, run_command
+from utils import deduplicate_code, run_command, update_test_timeout,parse_and_deduplicate_errors
 from prompts import generate_extra_prompt,fix_extra_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
@@ -21,7 +21,7 @@ def get_source_path(source, src_names,output_project_path):
     else:
         return f"{output_project_path}/tests/{source.replace('-','_')}.rs"
 
-def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False):
+def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False,test_timeout=60000):
     if os.path.exists(os.path.join(output_dir, 'results.json')):
         with open(os.path.join(output_dir, 'results.json'), 'r') as file:
             results = json.load(file)
@@ -54,18 +54,24 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
     
     print("Running tests...")
+    update_test_timeout(f'{output_project_path}/tests', test_timeout)
     
-    
+    run_cargo_test(output_project_path,output_dir)
 
-    test_result = run_command(f'cd {output_project_path} && cargo test --no-fail-fast')
-    print(test_result)
     calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
 
     print("Calculating asserts count...")
     calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir)
     
 
-
+def run_cargo_test(output_project_path,output_dir):
+    command = f'cd {output_project_path} && cargo test --no-fail-fast'
+    test_result = subprocess.run(command, shell=True, check=False, text=True, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    output_str = test_result.stdout
+    print(output_str)
+    with open(os.path.join(output_dir, 'cargo_test_result.txt'), 'w') as result_file:
+        result_file.write(output_str)
+    return output_str
 
 
 def extract_import_errors(log):
@@ -157,7 +163,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         max_regenerations = 3
         while test_error.count("error") > 1:
             print(test_error)
-            prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
+            prompt_fix = fix_extra_prompt(prompt, response, source, child_source, parse_and_deduplicate_errors(test_error))
             print(f"##################################################################################################")
             print(f"Prompt length: {len(prompt_fix)}")
             response = generate_response(prompt_fix, llm_model, temperature=0)
@@ -245,4 +251,4 @@ if __name__ == "__main__":
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer) 
 
 
-    post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only)
+    post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only,test_timeout=params.get('test_timeout',60000))

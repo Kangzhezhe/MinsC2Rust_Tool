@@ -165,6 +165,26 @@ def get_output_content(non_function_content, function_content_dict):
     output_content = non_function_content + '\n' + '\n'.join(function_content_dict.values())
     return output_content
 
+def parse_and_deduplicate_errors(error_str):
+    # 使用正则表达式匹配错误类型和具体报错内容
+    error_pattern = re.compile(r"(error\[[E\d]+\]: .+?)(?=\nerror\[|$)", re.DOTALL)
+    matches = error_pattern.findall(error_str)
+
+    # 将错误信息转换为字典形式
+    error_dict = {}
+    for match in matches:
+        error_type = match.split('\n')[0]
+        error_content = match[len(error_type):].strip()
+        if error_type not in error_dict:
+            error_dict[error_type] = error_content
+
+    # 对错误类型进行去重，并生成去重后的字符串
+    unique_errors = []
+    for error_type, error_content in error_dict.items():
+        unique_errors.append(f"{error_type}\n{error_content}")
+
+    return '\n\n'.join(unique_errors)
+
 def deduplicate_code(all_function_lines,tmp_dir):
     with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
         f.write(all_function_lines)
@@ -220,3 +240,23 @@ def delete_file_if_exists(file_path):
         print(f"FileNotFoundError: {e}")
     except Exception as e:
         print(f"An error occurred while trying to delete the file {file_path}: {e}")
+
+def update_test_timeout(file_path, new_timeout):
+    if os.path.isdir(file_path):
+        for root, _, files in os.walk(file_path):
+            for file in files:
+                file_full_path = os.path.join(root, file)
+                update_test_timeout_in_file(file_full_path, new_timeout)
+    else:
+        update_test_timeout_in_file(file_path, new_timeout)
+
+def update_test_timeout_in_file(file_path, new_timeout):
+    with open(file_path, 'r') as file:
+        content = file.read()
+
+    updated_content = re.sub(r'#\[timeout\(\d+\)\]', f'#[timeout({new_timeout})]', content)
+
+    with open(file_path, 'w') as file:
+        file.write(updated_content)
+
+    # print(f"Updated timeouts in {file_path} to {new_timeout} milliseconds.")

@@ -43,11 +43,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
     else:
+        import ipdb; ipdb.set_trace()
         raise ValueError(f"{source_name} is not correct")
 
-    if func_name == 'test_list_sort':
-        import ipdb;ipdb.set_trace()
-    elif i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
+    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
         return
     end_time = time.time()
@@ -157,9 +156,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         temp_function_content_dict[key] = value
                     else:
                         temp_function_content_dict[func_name] += value
-                response_function_content_dict = temp_function_content_dict
                 temp_non_function_content = response_non_function_content
                 template = get_output_content(temp_non_function_content, temp_function_content_dict)
+
+                if func_name not in temp_function_content_dict or 'main' not in temp_function_content_dict:
+                    retry_count = max_retries
+                    continue
 
                 # template = response
                 
@@ -300,7 +302,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if len(all_files_list) == 1 and remove_comments_and_whitespace(compile_error1) == '':
                     non_function_content, _, _ = deduplicate_code(template,tmp_dir)
                     results_copy[source_name]['extra'] = non_function_content
-                    
                 elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
@@ -503,14 +504,14 @@ def get_parallel_groups(test_names, data_manager):
             difference = include_list - include_lists_without_fn_pointer[test_name]
             if difference:
                 difference_values[test_name] = difference
+            else:
+                difference_values[test_name] = set()
 
     # 计算所有差异值的并集
     all_difference_values = set().union(*difference_values.values())
 
     # 初始化两个集合
     set1 = {}
-    if all_difference_values == set():
-        set1 = include_lists
     set2 = {}
 
     # 复制 difference_values 以便操作
@@ -683,6 +684,8 @@ async def main():
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params
     )
+
+    import ipdb; ipdb.set_trace()
 
     end_time = time.time()
     elapsed_time = end_time - start_time

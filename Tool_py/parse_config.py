@@ -42,7 +42,7 @@ def setup_project_directories(config):
     copy_if_not_exists("../test_project/Cargo.lock", os.path.join(output_project_path, "Cargo.lock"))
 
     params = {key: config.getint('Params', key) for key in config['Params']}
-    excluded_files = config['ExcludeFiles']['files'].split(', ')
+    excluded_files = [file.strip() for file in config['ExcludeFiles']['files'].split(',')]
 
 
     enable_english_prompt = config.getboolean('Settings', 'enable_english_prompt')
