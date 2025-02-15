@@ -43,7 +43,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
     else:
-        import ipdb; ipdb.set_trace()
         raise ValueError(f"{source_name} is not correct")
 
     if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
@@ -355,11 +354,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 else:
                     raise ValueError("all_files is not correct")
 
-                compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
-                if compile_error2:
-                    retry_count = max_retries
-                    logger.info(f"Compilation failed for compiling all_files processed_all_files.rs, retrying...")
-                    continue
+                
                 if retry>=max_json_insert_retries:
                     with lock:
                         total_error_count += 1
@@ -368,7 +363,14 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     all_error_funcs_content[source_name][func_name] = output_content + '\n //insert编译报错信息：' + compile_error2
                     shutil.rmtree(tmp_dir)
                     return
-                results = results_copy
+
+                compile_error2 =  compile_all_files(data_manager.all_include_files, results_copy, tmp_dir, data_manager)
+                if compile_error2:
+                    retry_count = max_retries
+                    logger.info(f"Compilation failed for compiling all_files processed_all_files.rs, retrying...")
+                    continue
+                else:
+                    results = results_copy
                 if source_name not in once_retry_count_dict:
                     once_retry_count_dict[source_name] = {}
                 once_retry_count_dict[source_name][func_name] = retry_count
@@ -681,11 +683,11 @@ async def main():
 
     results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
 
+    import ipdb; ipdb.set_trace()
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params
     )
 
-    import ipdb; ipdb.set_trace()
 
     end_time = time.time()
     elapsed_time = end_time - start_time
