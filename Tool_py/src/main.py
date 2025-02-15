@@ -357,7 +357,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
                 if compile_error2:
                     retry_count = max_retries
-                    logger.info(f"Compilation failed for processed_all_files.rs, retrying...")
+                    logger.info(f"Compilation failed for compiling all_files processed_all_files.rs, retrying...")
                     continue
                 if retry>=max_json_insert_retries:
                     with lock:
