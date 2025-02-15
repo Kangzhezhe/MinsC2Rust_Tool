@@ -296,8 +296,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     results_copy[source_name]['extra'] = non_function_content
                     compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
                     if compile_error2:
-                        retry = max_json_insert_retries
-                        logger.info(f"Compilation failed for json processed_all_files.rs, skipping...")
+                        retry_count = max_retries
+                        logger.info(f"Compilation failed for processed_all_files.rs, retrying...")
+                        continue
                 elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
@@ -373,7 +374,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
             if regenerate_count >= max_regenerations:
                 logger.warning(f"Failed to compile {func_name} after {regenerate_count} regenerations. Skipping...")
-                # total_error_funcs.append(func_name)
                 if source_name not in all_error_funcs_content:
                     all_error_funcs_content[source_name] = {}
                 all_error_funcs_content[source_name][func_name] = template + '\n //编译报错信息：' + compile_error

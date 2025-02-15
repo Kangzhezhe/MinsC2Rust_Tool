@@ -102,7 +102,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                 if value.startswith("fn"):
                     value = 'pub ' + value
                 if key.startswith('test_'):
-                    content += "#[test]\n" + "%s\n" % value
+                    content += "#[test]\n#[timeout(60000)]\n" + "%s\n" % value
                 else:
                     content += "%s\n" % value
         content = re.sub(r'\n{3,}', '\n\n', content)
@@ -117,6 +117,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             file.write(content)
     
     content = get_content(source, results, with_extra=False)
+    content = '\nuse ntest::timeout;\n' + content
 
     if len(child_source) != 0:
         all_child_func_list = set()
@@ -157,8 +158,6 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         while test_error.count("error") > 1:
             print(test_error)
             prompt_fix = fix_extra_prompt(prompt, response, source, child_source, test_error)
-            if len(prompt_fix)>15000:
-                prompt_fix = prompt_fix[:15000]
             print(f"##################################################################################################")
             print(f"Prompt length: {len(prompt_fix)}")
             response = generate_response(prompt_fix, llm_model, temperature=0)
