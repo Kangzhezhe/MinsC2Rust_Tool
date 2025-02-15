@@ -45,7 +45,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     else:
         raise ValueError(f"{source_name} is not correct")
 
-    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
+    if func_name == 'test_list_sort':
+        import ipdb;ipdb.set_trace()
+    elif i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
         return
     end_time = time.time()
@@ -217,6 +219,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if func_name not in function_content_dict:
                     retry_count = max_retries
                     continue
+                elif func_name.startswith('test_') and has_generic_parameters(function_content_dict[func_name]):
+                    retry_count = max_retries
+                    warning += f"\n// 注意：测试函数{func_name}不要有非生命周期的泛型参数 \n"
+                    continue
                 with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
                     f.write(output_content)
                 compile_error1 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir,'test_source.rs')}')
@@ -269,7 +275,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     elif k != func_name and remove_comments_and_whitespace(results_copy[name][k]) != remove_comments_and_whitespace(v):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
                         retry_count = max_retries+1
-                        warning = f"\n// 注意：一定不要修改函数体{k}的函数定义，否则会出错 \n"
+                        warning += f"\n// 注意：一定不要修改函数体{k}的函数定义，否则会出错 \n"
                         break
                 if retry_count == max_retries+1:
                     continue
@@ -294,11 +300,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if len(all_files_list) == 1 and remove_comments_and_whitespace(compile_error1) == '':
                     non_function_content, _, _ = deduplicate_code(template,tmp_dir)
                     results_copy[source_name]['extra'] = non_function_content
-                    compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
-                    if compile_error2:
-                        retry_count = max_retries
-                        logger.info(f"Compilation failed for processed_all_files.rs, retrying...")
-                        continue
+                    
                 elif len(all_files) > 1:
                     for key, value_dict in results_copy.items():
                         if key in all_files:
@@ -352,6 +354,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 else:
                     raise ValueError("all_files is not correct")
 
+                compile_error2 =  compile_all_files(all_files, results_copy, tmp_dir, data_manager)
+                if compile_error2:
+                    retry_count = max_retries
+                    logger.info(f"Compilation failed for processed_all_files.rs, retrying...")
+                    continue
                 if retry>=max_json_insert_retries:
                     with lock:
                         total_error_count += 1

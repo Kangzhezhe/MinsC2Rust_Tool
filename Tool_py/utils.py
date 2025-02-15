@@ -42,6 +42,11 @@ def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
 
     return compile_error2
 
+def has_generic_parameters(function_str):
+    pattern = r"fn\s+\w+\s*<[^>]*>\s*\([^)]*\)\s*\{[^}]*\}"
+    match = re.search(pattern, function_str)
+    return bool(match)
+
 def cleanup(tmp_dir):
     rm_tmp_dir = os.path.abspath(tmp_dir)
     def handler(sig, frame):

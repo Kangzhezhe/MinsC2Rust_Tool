@@ -99,9 +99,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             content = ""
         for key, value in results[source].items():
             if key not in ["extra", "main"]:
-                if value.startswith("fn"):
+                if value.lstrip().startswith("fn"):
                     value = 'pub ' + value
-                if key.startswith('test_'):
+                if key.lstrip().startswith('test_'):
                     content += "#[test]\n#[timeout(60000)]\n" + "%s\n" % value
                 else:
                     content += "%s\n" % value
