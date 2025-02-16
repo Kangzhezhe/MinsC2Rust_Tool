@@ -92,6 +92,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         max_regenerations = 2
     else:
         max_regenerations = min(3 + depth, params['max_regenerations'])
+    if test_source_name == 'test-tinyexpr':
+        max_regenerations -= 1
 
     retry_count = 0
     regenerate_count = 0
