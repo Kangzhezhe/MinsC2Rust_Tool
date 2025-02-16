@@ -234,8 +234,6 @@ def delete_file_if_exists(file_path):
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-        else:
-            print(f"File {file_path} does not exist.")
     except FileNotFoundError as e:
         print(f"FileNotFoundError: {e}")
     except Exception as e:

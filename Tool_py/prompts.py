@@ -69,7 +69,7 @@ def get_error_fixing_prompt(template, compile_error,before_details,pointer_funct
 
         * 待改错内容：{template+'//编译器错误信息：'+compile_error}
         * 返回格式：
-            所有全局变量、结构体、全局变量、宏定义、枚举定义
+            所有完整的全局变量、结构体、全局变量、宏定义、枚举定义、模块导入语句等代码中的非函数部分
             pub fun func1(){{有改动的函数1}}
             pub fun func2(){{有改动的函数2}}
             ...
