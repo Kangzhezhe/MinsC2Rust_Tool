@@ -48,6 +48,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
         return
+
     end_time = time.time()
     elapsed_time = end_time - start_time
     hours, remainder = divmod(elapsed_time, 3600)
@@ -124,7 +125,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
                     new_function_content_dict = {key: temp_function_content_dict[key] for key in temp_function_content_dict if key in response_function_content_dict}
                     template_prompt = get_output_content(temp_non_function_content, new_function_content_dict)
-                    new_function_content_dict = {key: temp_function_content_dict[key].lstrip().split('\n', 1)[0] for key in temp_function_content_dict if key not in response_function_content_dict}
+                    new_function_content_dict = {key: temp_function_content_dict[key].lstrip().split('\n', 1)[0].replace('{', ';') for key in temp_function_content_dict if key not in response_function_content_dict}
                     template_prompt += '// 以下是来自同文件的函数声明可以直接调用\n'
                     template_prompt = get_output_content(template_prompt, new_function_content_dict)
                 else:
@@ -152,7 +153,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 for key, value in response_function_content_dict.items():
                     if key in temp_function_content_dict:
-                        temp_function_content_dict[key] = value
+                        if key not in data_manager.all_pointer_funcs:
+                            temp_function_content_dict[key] = value
+                        elif key != func_name and remove_comments_and_whitespace(data_manager.get_result(key,results)) != remove_comments_and_whitespace(value):
+                            logger.info(f"Function Pointer {key} has been modified ...")
+                            warning += f"\n// 注意：一定不要修改函数体{key}的函数定义，否则会出错 \n"
+                            break
                     else:
                         temp_function_content_dict[func_name] += value
                 temp_non_function_content = response_non_function_content
@@ -262,6 +268,13 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 logger.info(f'all_files:{all_files}')
                 with open(os.path.join(tmp_dir,'processed_all_files.rs'), 'w') as f:
                     f.write(output_content)
+                processed_all_files_error = run_command(f'rustc -Awarnings {os.path.join(tmp_dir,'processed_all_files.rs')}')
+                delete_file_if_exists('processed_all_files')
+                if processed_all_files_error:
+                    retry_count = max_retries
+                    logger.info(f"Compilation failed for processed_all_files.rs, regenerating...")
+                    continue
+
                 results_copy = copy.deepcopy(results)
                 
                 temp_results = {k: v for k, v in function_content_dict.items() if data_manager.get_source_name_by_func_name(k) in all_files}
@@ -286,7 +299,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 results_copy[source_name][func_name] += extra_content
 
                 if func_name in data_manager.all_pointer_funcs:
-                    results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'\n{data_manager.comment}', 1)
+                    results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'{data_manager.comment}', 1)
 
                 # if source_name in src_names:
                 #     results[source_name]['extra'] = non_function_content
@@ -309,7 +322,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                                 if key == source_name and sub_key == func_name or sub_key == 'extra':
                                     first_lines[key][sub_key] = sub_value
                                 else:
-                                    first_line = sub_value.lstrip().split('\n', 1)[0]
+                                    first_line = sub_value.lstrip().split('\n', 1)[0].replace('{', ';')
                                     first_lines[key][sub_key] = first_line
                     compile_error2 = ''
                     task_prompt = get_task_prompt(non_function_content, first_lines)
@@ -496,7 +509,7 @@ def load_checkpoint(output_dir, results={}, once_retry_count_dict={}, all_error_
     return {}, {}, {}
 
 
-def get_parallel_groups(test_names, data_manager):
+def get_parallel_groups(test_names, data_manager,sorted_funcs_depth,funcs_childs):
     # 获取每个 test_source_name 的包含列表
     include_lists_without_fn_pointer = {test_name: set(data_manager.get_include_indices(test_name, without_fn_pointer=True)[1]) for test_name in test_names}
     include_lists = {test_name: set(data_manager.get_include_indices(test_name)[1]) for test_name in test_names}
@@ -569,6 +582,15 @@ def get_parallel_groups(test_names, data_manager):
     parallel_groups = parallel_groups_set1 + parallel_groups_set2
 
     print("Parallel Groups:", parallel_groups)
+    for k,vs in set1.items():
+        for v in vs:
+            index = data_manager.get_index_by_source_name(v)
+            funcs = list(data_manager.data[index].keys())
+            for f in funcs :
+                if f != 'extra' and f in data_manager.all_pointer_funcs and f not in sorted_funcs_depth[k]:
+                    max_value = max(sorted_funcs_depth[k].values())
+                    sorted_funcs_depth[k] = dict([(f, max_value)] + list(sorted_funcs_depth[k].items()))
+           
     return parallel_groups
 
 def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir, all_error_funcs_content, once_retry_count_dict, test_names, params):
@@ -577,7 +599,7 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
     lock = threading.Lock()
     global total_retry_count, total_regenerate_count, total_error_count
 
-    parallel_groups = get_parallel_groups(test_names, data_manager)
+    parallel_groups = get_parallel_groups(test_names, data_manager,sorted_funcs_depth,funcs_childs)
 
     # 并行处理每个 test_source_name
     for group in parallel_groups:
@@ -683,7 +705,6 @@ async def main():
 
     results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
 
-    import ipdb; ipdb.set_trace()
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params
     )

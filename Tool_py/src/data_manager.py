@@ -4,14 +4,18 @@ import json
 class DataManager:
     def __init__(self, source_path,include_dict,all_pointer_funcs,include_dict_without_fn_pointer):
         self.data = []
+        self.path_index_dict = {}
         self.source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]
         self.include_dict = include_dict
         self.include_dict_without_fn_pointer = include_dict_without_fn_pointer
         self.all_pointer_funcs = all_pointer_funcs
-        self.comment = "// 注意：该函数不允许修改，因为工程中其他文件中的函数也调用了他们，如果修改了，会影响其他文件内函数的功能，完整原样返回该函数\n"
+        self.comment = "// 注意：该函数不允许修改，因为工程中其他文件中的函数也调用了他们，如果修改了，会影响其他文件内函数的功能，只允许调用该函数\n"
         for f in source_path:
             with open(f, 'r') as file:
                 self.data.append(json.load(file))
+        
+    def get_index_by_source_name(self,source_name):
+        return self.source_names.index(source_name)
 
     def get_all_source(self,source_name,all_files,without_fn_pointer=False):
         if without_fn_pointer:
