@@ -66,6 +66,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
+    if len(child_funs_c_list)>8:
+        all_error_funcs_content[source_name][func_name] =  + '//同时处理的函数过多，无法处理' 
+        shutil.rmtree(tmp_dir)
+        return
 
     if params['enable_english_prompt']:
         prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details,source_context)
@@ -92,8 +96,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         max_regenerations = 2
     else:
         max_regenerations = min(3 + depth, params['max_regenerations'])
+
     if test_source_name == 'test-tinyexpr':
         max_regenerations -= 1
+        max_retries = min(2+depth, 12)
 
     retry_count = 0
     regenerate_count = 0
