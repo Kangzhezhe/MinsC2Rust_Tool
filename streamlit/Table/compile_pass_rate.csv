@@ -1,0 +1,19 @@
+Source,Pass Rate (with test),Pass count (with test),Total count (with test),Pass Rate (without test),Pass count (without test),Total count (without test)
+test-rb-tree,100.00%,36,36,100.00%,28,28
+test-bloom-filter,93.75%,15,16,90.00%,9,10
+test-binomial-heap,100.00%,20,20,100.00%,14,14
+test-binary-heap,100.00%,12,12,100.00%,7,7
+test-utf8-decoder,100.00%,1,1,100.00%,0,0
+test-sortedarray,91.67%,22,24,100.00%,17,17
+test-hash-table,90.00%,27,30,90.91%,20,22
+test-queue,100.00%,18,18,100.00%,10,10
+test-slist,91.43%,32,35,95.24%,20,21
+test-arraylist,100.00%,24,24,100.00%,15,15
+test-tinyexpr,24.44%,11,45,32.35%,11,34
+test-compare-functions,100.00%,16,16,100.00%,8,8
+test-trie,100.00%,27,27,100.00%,16,16
+test-hash-functions,62.50%,5,8,75.00%,3,4
+test-set,91.67%,33,36,96.00%,24,25
+test-avl-tree,100.00%,37,37,100.00%,29,29
+test-list,94.59%,35,37,100.00%,23,23
+Overall,87.91%,371,422,89.75%,254,283

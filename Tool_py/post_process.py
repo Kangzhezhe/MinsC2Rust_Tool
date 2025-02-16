@@ -119,6 +119,8 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
     content = get_content(source, results)
 
     if len(child_source) == 0:
+        if  source in test_names:
+            content = '\nuse ntest::timeout;\n' + content
         with open(src_output_path, 'w') as file:
             file.write(content)
     
@@ -177,11 +179,10 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                     if key != source and key in first_lines:
                         for sub_key, sub_value in value.items():
                             if sub_key in first_lines[key]:
-                                if sub_key == 'extra' and results[key].get(sub_key, '') != '':
+                                if sub_key == 'extra' and sub_key in results[key] :
                                     # results[key][sub_key] = remove_function_definitions(sub_value)
                                     non_function_content, _,_ =  deduplicate_code(sub_value, tmp_dir)
                                     results[key][sub_key] = non_function_content
-
                     child_path = get_source_path(key, src_names,output_project_path)
                     with open(child_path, 'w') as file:
                         file.write(get_content(key, results))

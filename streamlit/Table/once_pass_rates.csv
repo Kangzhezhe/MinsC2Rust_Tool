@@ -1,0 +1,17 @@
+Source,Pass Rate,Pass Count,Total Count
+test-utf8-decoder,0.00%,0,1
+test-arraylist,66.67%,16,24
+test-avl-tree,57.89%,22,38
+test-binary-heap,46.15%,6,13
+test-binomial-heap,33.33%,7,21
+test-bloom-filter,73.33%,11,15
+test-compare-functions,93.75%,15,16
+test-hash-table,56.67%,17,30
+test-list,45.45%,15,33
+test-queue,70.59%,12,17
+test-rb-tree,61.76%,21,34
+test-set,47.06%,16,34
+test-slist,56.25%,18,32
+test-sortedarray,66.67%,14,21
+test-trie,55.56%,15,27
+Overall,57.58%,205,356
