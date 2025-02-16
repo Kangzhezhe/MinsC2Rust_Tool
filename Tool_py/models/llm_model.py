@@ -5,6 +5,8 @@ from models.local import get_response_from_model
 from models.qianwen import get_response_qianwen
 
 def generate_response(prompt,llm_model='qwen',temperature=0.0):
+    if len(prompt) > 25000:
+        return ""
     if llm_model == "local":
         response = asyncio.run(get_response_from_model(prompt))
     elif llm_model == "qwen":
