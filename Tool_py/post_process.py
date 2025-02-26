@@ -111,7 +111,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                     content += "#[test]\n#[timeout(60000)]\n" + "%s\n" % value
                 else:
                     content += "%s\n" % value
-        content = re.sub(r'\n{3,}', '\n\n', content).replace(data_manager.comment, '')
+        content = re.sub(r'\n{3,}', '\n\n', content).replace(data_manager.comment, '\n')
         # updated_content = re.sub(r'(?m)^(fn\s+\w+(\s*<[^>]*>)?\s*\([^)]*\)\s*->\s*[\w:<>]+\s*\{)', r'pub \1', content)
 
         return content

@@ -67,7 +67,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
     if len(child_funs_c_list)>8:
-        all_error_funcs_content[source_name][func_name] =  + '//同时处理的函数过多，无法处理' 
+        all_error_funcs_content[source_name][func_name] =   '//同时处理的函数过多，无法处理' 
         shutil.rmtree(tmp_dir)
         return
 
@@ -647,36 +647,36 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    source_path = test_path
-    source_path.extend(src_path)
+    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    # source_path = test_path
+    # source_path.extend(src_path)
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
-    #     os.path.join(tmp_dir,'src_json/tinyexpr.json'),
-    #     os.path.join(tmp_dir,'test_json/test-utf8-decoder.json'),
-    #     os.path.join(tmp_dir,'src_json/utf8-decoder.json'),
-    # ]
-    # src_names = ['utf8-decoder','tinyexpr']
-    # test_names = ['test-utf8-decoder','test-tinyexpr']
+    source_path = [
+        os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
+        os.path.join(tmp_dir,'src_json/tinyexpr.json'),
+        os.path.join(tmp_dir,'test_json/test-utf8-decoder.json'),
+        os.path.join(tmp_dir,'src_json/utf8-decoder.json'),
+    ]
+    src_names = ['utf8-decoder','tinyexpr']
+    test_names = ['test-utf8-decoder','test-tinyexpr']
 
-    # source_path = [
-    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
-    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
-    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
-    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    # ]
-    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+    source_path += [
+        os.path.join(tmp_dir,'src_json/compare-int.json'),
+        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+        os.path.join(tmp_dir,'src_json/compare-string.json'),
+        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+        os.path.join(tmp_dir,'src_json/sortedarray.json'),
+        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+        os.path.join(tmp_dir,'src_json/arraylist.json'),
+        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    ]
+    src_names += ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    test_names += ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []
