@@ -50,7 +50,35 @@ def get_response_siliconflow_deepseek(prompt, temperature=0):
     # 如果所有重试都失败，返回错误消息
     return "请求失败：未能获取有效响应"
 
+import subprocess
+import json
 
+def get_chat_response(prompt, temperature=0):
+    curl_command = [
+        'curl', '-X', 'POST', '--location', 'https://chat.zju.edu.cn/api/ai/v1/chat/completions',
+        '--header', 'Content-Type: application/json',
+        '--header', 'Authorization: Bearer sk-WGje1bURmsSvnezr92277f75B6B74955A8F3C36c582c28B4',
+        '--data', json.dumps({
+            "model": "deepseek-v3-671b",
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            "stream": False
+        })
+    ]
+
+    result = subprocess.run(curl_command, capture_output=True, text=True)
+
+    # 解析 JSON 响应
+    response_json = json.loads(result.stdout)
+
+    # 获取 content 字段
+    if  'choices' not in response_json:
+        import ipdb; ipdb.set_trace()
+    content = response_json['choices'][0]['message']['content']
+
+    return content
 
 if __name__ == '__main__':
     prompt = "你是谁？"

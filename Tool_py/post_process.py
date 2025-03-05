@@ -36,8 +36,16 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_manager)
     calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
 
+    
+
+    # 工程结构重构
     if not eval_only:
         all_source_names = set()
+        lib_rs_path = f'{output_project_path}/src/lib.rs'
+        if os.path.exists(lib_rs_path):
+            with open(lib_rs_path, 'r') as f:
+                for line in f:
+                    all_source_names.add(line.strip())
         for source in results.keys():
             if source in test_names:
                 _, all_include_files = data_manager.get_include_indices(source)
@@ -47,15 +55,36 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                         all_source_names.add(f"pub mod {include_file.replace('-', '_')};")
                         child_source = include_dict.get(include_file, [])
                         post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
-                with open(f'{output_project_path}/src/lib.rs', 'w') as f:
+                with open(lib_rs_path, 'w') as f:
                     f.write('\n'.join(all_source_names))
                     f.write('\n')
                 child_source = include_dict.get(source, [])
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
-    
+
+    with open(os.path.join(output_dir, 'results.json'), 'w') as f:
+        json.dump(results, f, indent=4)
+
+    # TODO:执行测试
+    import ipdb;ipdb.set_trace()
+    if not eval_only:
+        all_source_names = set()
+        for source in results.keys():
+            if source in test_names:
+                print(f"Processing {source}...")
+                _, all_include_files = data_manager.get_include_indices(source)
+                funcs_child = funcs_childs[source]
+                print("all_include_files",all_include_files)
+                print("funcs_child",funcs_child)
+
+
+    # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
+    #     json.dump(results, f, indent=4)
+
+   
+
     print("Running tests...")
+
     update_test_timeout(f'{output_project_path}/tests', test_timeout)
-    
     run_cargo_test(output_project_path,output_dir)
 
     calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
@@ -90,11 +119,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
     if source not in results:
         return
     print(f"Processing {source}...")
-
     
-
-    if os.path.exists(get_source_path(source, src_names,output_project_path)):
-        return
+    # if os.path.exists(get_source_path(source, src_names,output_project_path)):
+    #     return
 
     src_output_path = get_source_path(source, src_names,output_project_path)
 
@@ -123,11 +150,16 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             content = '\nuse ntest::timeout;\n' + content
         with open(src_output_path, 'w') as file:
             file.write(content)
+        return
     
     content = get_content(source, results, with_extra=False)
     content = '\nuse ntest::timeout;\n' + content
 
-    if len(child_source) != 0:
+    with open(src_output_path, 'w') as file:
+        file.write(results[source].get("extra", "") + content)
+    test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
+
+    if len(child_source) != 0 and test_error.count("error") > 1:
         all_child_func_list = set()
         for func_name in results[source].keys():
             if func_name != 'extra':
@@ -179,7 +211,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                     if key != source and key in first_lines:
                         for sub_key, sub_value in value.items():
                             if sub_key in first_lines[key]:
-                                if sub_key == 'extra' and sub_key in results[key] :
+                                if sub_key == 'extra' and sub_key in results[key]:
                                     # results[key][sub_key] = remove_function_definitions(sub_value)
                                     non_function_content, _,_ =  deduplicate_code(sub_value, tmp_dir)
                                     results[key][sub_key] = non_function_content
@@ -205,6 +237,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                 with open(src_output_path, 'w') as file:
                     file.write(template + content)
                 test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
+        results[source]['extra'] = template
 
     run_command(f"rustfmt {src_output_path}")
 
