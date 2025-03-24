@@ -1,7 +1,7 @@
 use serde_json::json;
 use std::env;
 use std::fs;
-use syn::{parse_file, spanned::Spanned, Item};
+use syn::{parse_file, spanned::Spanned, Item, Type};
 
 fn extract_definitions(file_path: &str) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(file_path)?;
@@ -22,6 +22,32 @@ fn extract_definitions(file_path: &str) -> Result<serde_json::Value, Box<dyn std
                     "start_line": start.line,
                     "end_line": end.line,
                 }));
+            }
+            Item::Impl(impl_item) => {
+                if let Some((_, _, _)) = &impl_item.trait_ {
+                    // 忽略 trait 实现
+                    continue;
+                }
+
+                if let Type::Path(type_path) = *impl_item.self_ty.clone() {
+                    if let Some(segment) = type_path.path.segments.last() {
+                        let class_name = segment.ident.to_string();
+                        for item in impl_item.items {
+                            if let syn::ImplItem::Method(method) = item {
+                                let ident = &method.sig.ident;
+                                let span = method.span();
+                                let start = span.start();
+                                let end = span.end();
+                                definitions.push(json!({
+                                    "type": "Method",
+                                    "name": format!("{}::{}", class_name, ident),
+                                    "start_line": start.line,
+                                    "end_line": end.line,
+                                }));
+                            }
+                        }
+                    }
+                }
             }
             _ => {}
         }

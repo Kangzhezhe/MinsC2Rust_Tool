@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import re
@@ -10,7 +11,7 @@ from models.llm_model import generate_response
 from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count
 from merge_c_h import process_files
 from utils import deduplicate_code, run_command, update_test_timeout,parse_and_deduplicate_errors
-from prompts import generate_extra_prompt,fix_extra_prompt
+from prompts import generate_extra_prompt,fix_extra_prompt, get_json_parsing_fix_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
 from src.data_manager import DataManager
@@ -20,6 +21,97 @@ def get_source_path(source, src_names,output_project_path):
         return f"{output_project_path}/src/{source.replace('-','_')}.rs"
     else:
         return f"{output_project_path}/tests/{source.replace('-','_')}.rs"
+
+def process_files_refactoring(data_manager, source, all_include_files, include_dict, results, src_names, test_names, funcs_child, output_project_path, llm_model,check=True):
+    for include_file in all_include_files:
+        if include_file in src_names and include_file in results:
+            child_source = include_dict.get(include_file, [])
+            post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model,check=check)
+    child_source = include_dict.get(source, [])
+    test_error = post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model,check=check)
+    return test_error
+
+def run_tests_and_get_failed_cases(output_project_path, source,funcs_child):
+    test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo test --test {source.replace('-','_')}", check=False)
+    pattern = re.compile(r'---- (test_\w+) stdout ----\n(.*?)\n\n', re.DOTALL)
+    matches = pattern.findall(test_error)
+    failed_tests = {test_case: error_message for test_case, error_message in matches}
+    if len(failed_tests) == 0:
+        test_error = ''
+
+    depth_cache = {}
+    for func in funcs_child:
+        calculate_depth(func, funcs_child, depth_cache)
+    sorted_tests = sorted(depth_cache.items(), key=lambda x: x[1])
+    sorted_failed_tests = {test_case: failed_tests[test_case] for test_case, _ in sorted_tests if test_case in failed_tests}
+
+    return test_error, sorted_failed_tests
+
+def calculate_depth(func, funcs_child, depth_cache, current_path=None):
+    if current_path is None:
+        current_path = set()
+    
+    if func in depth_cache:
+        return depth_cache[func]
+    
+    if func in current_path:
+        depth_cache[func] = 15
+        return 15
+    
+    if func not in funcs_child or not funcs_child[func]:
+        depth_cache[func] = 0
+        return 0
+    
+    current_path.add(func)
+    depth = 1 + max(calculate_depth(child, funcs_child, depth_cache, current_path) for child in funcs_child[func])
+    current_path.remove(func)
+    
+    depth_cache[func] = depth
+    return depth
+
+def ensure_json_format(json_str):
+    retry = 0
+    while True:
+        try:
+            first_brace_index = re.search(r'{', json_str).start()
+            json_substr = json_str[first_brace_index:]
+            ret = json.loads(json_substr)
+            return ret
+        except json.JSONDecodeError as e:
+            print(f"json decode retrying: {retry}")
+            retry += 1
+            if retry > 10:
+                return None
+            error_position = e.pos if hasattr(e, 'pos') else 'unknown'
+            error_msg = str(e)
+            error_content = json_str[error_position:min(error_position+20, len(json_str))]
+            prompt1 = get_json_parsing_fix_prompt("", json_str, error_msg, error_position, error_content)
+            json_str = generate_response(prompt1, llm_model, temperature=0).replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
+
+from collections import deque
+
+class Memory:
+    def __init__(self, max_size=3, memory_type="Reflection"):
+        self.mem = deque(maxlen=max_size)  # 限制记忆长度
+        self.memory_type = memory_type
+    
+    def add(self, item):
+        self.mem.append(item)
+    
+    def get_context(self):
+        return "\n".join([f"# {self.memory_type} {i+1}: {r}" for i, r in enumerate(self.mem)])
+    
+    def clear(self):
+        self.mem.clear()
+
+    def get_latest(self, n=1):
+        latest_items = list(self.mem)[-n:] if self.mem else []
+        return "\n".join([f"# {self.memory_type} {len(self.mem) - len(latest_items) + i + 1}: {r}" for i, r in enumerate(latest_items)])
+
+
+# 示例用法
+trajectory_memory = Memory(max_size=10, memory_type="Trajectory")
+
 
 def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False,test_timeout=60000):
     if os.path.exists(os.path.join(output_dir, 'results.json')):
@@ -65,23 +157,148 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
         json.dump(results, f, indent=4)
 
     # TODO:执行测试
-    import ipdb;ipdb.set_trace()
     if not eval_only:
-        all_source_names = set()
         for source in results.keys():
             if source in test_names:
                 print(f"Processing {source}...")
+                results_copy = copy.deepcopy(results)
                 _, all_include_files = data_manager.get_include_indices(source)
                 funcs_child = funcs_childs[source]
                 print("all_include_files",all_include_files)
                 print("funcs_child",funcs_child)
+                process_files_refactoring(data_manager, source, all_include_files, include_dict, results_copy, src_names, test_names, funcs_child, output_project_path, llm_model,check=False)
+                test_error, failed_tests = run_tests_and_get_failed_cases(output_project_path, source,funcs_child)
+                if len(failed_tests) == 0:
+                    continue
+                test_case, error_message =  next(iter(failed_tests.items()))
+                remaining_cnt = len(failed_tests)
+                while remaining_cnt > 0:
+                    print(f"Processing {source}:{test_case}, remain len(failed_tests): {len(failed_tests)}...")
+                    if test_case in results_copy[source]:
+                        test_error = ''
 
+                        _, failed_tests = run_tests_and_get_failed_cases(output_project_path, source,funcs_child)
+                        test_error = failed_tests.get(test_case, '')
+                        print(test_error)
+                        retry_count = 0
+                        while test_error != '' and retry_count < 8: 
+                            _, child_funs =  data_manager.get_child_context(test_case, results_copy, funcs_child)
+                            child_funs_list = child_funs.strip(',').split(',')
+                            child_context_dict = defaultdict(dict)
 
-    # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
-    #     json.dump(results, f, indent=4)
+                            for source_name,values in results_copy.items():
+                                if source_name not in all_include_files:
+                                    continue
+                                for func, value in values.items():
+                                    if func in child_funs_list or func in ['extra',test_case]:
+                                        child_context_dict[source_name].update({func:value})
+                            
+                            test_case_c, _, _ = data_manager.get_content(test_case)
 
-   
+                            prompt = f"""
+                            请根据Rust测试用例{test_case}的执行错误信息与相关函数上下文，修改相关函数或测试用例，允许改变重写测试用例的逻辑以判断函数的正确性，根据需要在代码中插入打印调试语句输出报错数据
+                            直接返回修改后的Rust函数，不做任何的解释说明，如果有编译报错则修改对应的函数中的编译报错。
+                            注意：测试用例{test_case}本身有可能逻辑上有错误导致执行出错，如果发现测试用例本身逻辑错误请修改测试用例判断逻辑。如果多次修改测试用例逻辑仍然无法通过，可以尝试修改函数实现逻辑，如果多次修改函数实现逻辑仍然无法通过，可以尝试修改测试用例逻辑。
+                              参考与测试用例逻辑等价的C语言代码的实现逻辑：{test_case_c}，如果测试用例逻辑没有问题，则修改函数实现。
+                            请按照以下思考过程解决问题：首先分析测试用例的执行错误信息，定位到出错的代码行，然后判断测试用例不通过的原因，如果是测试用例本身的不合理请修改测试用例的判断逻辑，如果是函数实现错误请修改函数实现。
+                            输入上下文格式为json格式，key为文件名，value为函数名和函数内容的字典，返回格式也为json格式但是只返回修改过的元素，不要返回相同的代码，如下所示：
+                            {{
+                                "文件名1":{{
+                                    "extra":"文件额外非函数内容",
+                                    "函数名1":"函数内容1",
+                                    "函数名2":"函数内容2"
+                                }},
+                                "文件名2":{{
+                                    "extra":"文件额外非函数内容",
+                                    "函数名1":"函数内容1",
+                                }}
+                                ...
+                            }}
+                            返回格式：
+                            {{
+                                "需要改动的文件名1":{{
+                                    "extra":"改动过的文件额外非函数内容",
+                                    "需要改动的函数名1":"改动过的函数内容1",
+                                    "需要改动的函数名2":"改动过的函数内容2"
+                                }},
+                                ...
+                            }}
 
+                            相关上下文：{json.dumps(child_context_dict)}
+                            报错信息：{test_error}
+                            """
+
+                            experience = f"""
+                            以下是你上几轮失败的改错的操作和报错信息，请不要按之前相同的做法进行改错，尝试新的思路改错，避免重复犯错：
+                            {trajectory_memory.get_latest(5)}
+                            """
+
+                            prompt += experience
+
+                            print(f"len of prompt: {len(prompt)}")
+
+                            response = generate_response(prompt, llm_model, temperature=0).replace("```json`\n", "").replace("\n```", "").replace("```json`", "").replace("```", "")
+                            response_dict = ensure_json_format(response)
+                            print(response_dict)
+
+                            results_copy2 = copy.deepcopy(results_copy)
+                            for key, value in response_dict.items():
+                                results_copy2[key].update(value)
+                            test_error1 = process_files_refactoring(data_manager, source, all_include_files, include_dict, results_copy2, src_names, test_names, funcs_child, output_project_path, llm_model,check=False)
+
+                            _, failed_tests = run_tests_and_get_failed_cases(output_project_path, source,funcs_child)
+                            test_error = failed_tests.get(test_case, '')
+                            test_error += test_error1
+                            print(test_error)
+
+                            if test_error == '':
+                                results_copy = results_copy2
+                                break
+
+                            # get trajectory
+                            input_dict = {}
+                            for key, value in response_dict.items():
+                                input_dict[key] = {k: results_copy[key][k] for k in value.keys()}
+
+                            trajectory_prompt = f"""
+                            你是一个代码诊断专家，你之前有一个代码的改错任务，但是你改出来的代码仍然有错误存在，
+                            请你简单对比改错前后代码，描述这一次修改的过程，具体哪个地方的代码前后是怎么改的，报错信息是什么,以便你的之后的改错过程不再犯相同的错误：
+
+                            ## 本次改错的输入：
+                            {input_dict}
+                            ## 本次改错的输出：
+                            {response}
+                            ## 本次改错的报错信息：
+                            {test_error}
+                            
+                            请按以下步骤思考：
+                            1. 提取这一轮改错前后的完整语句 （如：这一次我修改/插入/删除了XXX语句...）
+                            2. 提取这一次的报错信息的关键信息 （如：这一次报错内容是XXX语句，报错内容）
+
+                            只返回本次改错过程和报错信息的描述，不要给出下一次修改的建议和分析，避免影响下一次的判断
+                            用一段话描述但是不能缺少关键语句的详细信息
+                            返回格式为文本格式，不需要包含代码块，只需要包含文字描述即可。
+                            """
+
+                            print(f"len of trajectory_prompt: {len(trajectory_prompt)}")
+                            trajectory_response = generate_response(trajectory_prompt, llm_model, temperature=0)
+                            trajectory_memory.add(trajectory_response)
+                            print(trajectory_memory.get_context())
+
+                            results_copy = results_copy2
+
+                            retry_count += 1
+
+                        trajectory_memory.clear()
+                        remaining_cnt = len(failed_tests)
+                        if len(failed_tests) == 0:
+                            break
+                        test_case, error_message =  next(iter(failed_tests.items()))
+                        
+
+                import ipdb;ipdb.set_trace()
+
+                
     print("Running tests...")
 
     update_test_timeout(f'{output_project_path}/tests', test_timeout)
@@ -115,9 +332,9 @@ def remove_function_definitions(extra):
     return pattern.sub('', extra)
 
 
-def post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model="qwen"):
+def post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model="qwen",check=True):
     if source not in results:
-        return
+        return "source not in results"
     print(f"Processing {source}...")
     
     # if os.path.exists(get_source_path(source, src_names,output_project_path)):
@@ -150,7 +367,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
             content = '\nuse ntest::timeout;\n' + content
         with open(src_output_path, 'w') as file:
             file.write(content)
-        return
+        return ""
     
     content = get_content(source, results, with_extra=False)
     content = '\nuse ntest::timeout;\n' + content
@@ -158,6 +375,9 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
     with open(src_output_path, 'w') as file:
         file.write(results[source].get("extra", "") + content)
     test_error = run_command(f"cd {output_project_path} && RUSTFLAGS=\"-Awarnings\" cargo check --tests")
+
+    if not check:
+        return test_error
 
     if len(child_source) != 0 and test_error.count("error") > 1:
         all_child_func_list = set()
@@ -240,6 +460,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         results[source]['extra'] = template
 
     run_command(f"rustfmt {src_output_path}")
+    return ""
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 3:
@@ -263,6 +484,20 @@ if __name__ == "__main__":
     src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
     source_path = test_path
     source_path.extend(src_path)
+
+    # source_path = [
+    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
+    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
+    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
+    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    # ]
+    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
+
 
     files_to_remove = []
     

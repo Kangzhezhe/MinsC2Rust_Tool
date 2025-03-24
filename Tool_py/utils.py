@@ -67,9 +67,9 @@ def update_nested_dict(original, updates):
         else:
             original[key] = sub_dict
 
-def run_command(command):
+def run_command(command,check=True):
     try:
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(command, shell=True, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         # print("Command output:", result.stdout)
         # print("Command error (if any):", result.stderr)
         return result.stdout

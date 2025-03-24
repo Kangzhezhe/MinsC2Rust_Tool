@@ -345,7 +345,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
                         try:
-                            response_json = json.loads(response)
+                            first_brace_index = re.search(r'{', response).start()
+                            json_substr = response[first_brace_index:]
+                            response_json = json.loads(json_substr)
                             for key, value in response_json.items():
                                 if key in results_copy:
                                     results_copy[key]['extra'] = value.get('extra', '')
