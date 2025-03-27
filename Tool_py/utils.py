@@ -185,6 +185,28 @@ def parse_and_deduplicate_errors(error_str):
 
     return '\n\n'.join(unique_errors)
 
+
+from collections import deque
+
+class Memory:
+    def __init__(self, max_size=3, memory_type="Reflection"):
+        self.mem = deque(maxlen=max_size)  # 限制记忆长度
+        self.memory_type = memory_type
+    
+    def add(self, item):
+        self.mem.append(item)
+    
+    def get_context(self):
+        return "\n".join([f"# {self.memory_type} {i+1}: {r}" for i, r in enumerate(self.mem)])
+    
+    def clear(self):
+        self.mem.clear()
+
+    def get_latest(self, n=1):
+        latest_items = list(self.mem)[-n:] if self.mem else []
+        return "\n".join([f"# {self.memory_type} {len(self.mem) - len(latest_items) + i + 1}: {r}" for i, r in enumerate(latest_items)])
+
+
 def deduplicate_code(all_function_lines,tmp_dir):
     with open(os.path.join(tmp_dir,'test_source.rs'), 'w') as f:
         f.write(all_function_lines)

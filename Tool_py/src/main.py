@@ -87,9 +87,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     max_retries = min(5+depth*2, params['max_retries'])
     template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
     compile_error1 = ''
-    conversation_history = []
     max_history_length = params['max_history_length']
     max_history_limit_tokens = params['max_history_limit_tokens']
+    trajectory_memory = Memory(max_size=10, memory_type="Trajectory")
     compile_error = ''
     max_json_insert_retries = params['max_json_insert_retries']
     if len(child_funs_c_list) > 1:
@@ -108,6 +108,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     all_files = set()
     warning = ''
     response_function_content_dict = {}
+    template_prompt = ''
     while 1:
         if retry_count < max_retries:
             with open(os.path.join(tmp_dir,'temp.rs'), 'w') as f:
@@ -117,20 +118,28 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             compile_error = filter_toolchain_errors(compile_error)
             debug("compile_error:", compile_error)
             
-            debug('conversation_history len:', len(conversation_history))
             if compile_error:
+                if template_prompt != '':
+                    trajectory_response = get_trajectory(template_prompt, response,compile_error, llm_model)
+                    trajectory_memory.add(trajectory_response)
+                    logger.info(trajectory_memory.get_latest())
                 retry_count += 1
                 with lock:
                     total_retry_count += 1
                 if retry_count >= max_retries:
                     continue
                 logger.info(f"Compilation failed for {func_name}, retrying... {retry_count}/{max_retries}")
-                # history_prompt = "\n".join([f"Prompt: {entry['prompt']}\nResponse: {entry['response']}" for entry in conversation_history])
 
                 if response_function_content_dict != {}:
+                    temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
+                    function_names = re.findall(r'fn\s+(\w+)', compile_error)
+                    logger.info(f"compile error function_names: {function_names}")
+                    for f in function_names:
+                        if f in temp_function_content_dict:
+                            response_function_content_dict[f] = ''
                     if func_name not in response_function_content_dict:
                         response_function_content_dict[func_name] = ''
-                    temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
+                    
                     new_function_content_dict = {key: temp_function_content_dict[key] for key in temp_function_content_dict if key in response_function_content_dict}
                     template_prompt = get_output_content(temp_non_function_content, new_function_content_dict)
                     new_function_content_dict = {key: temp_function_content_dict[key].lstrip().split('\n', 1)[0].replace('{', ';') for key in temp_function_content_dict if key not in response_function_content_dict}
@@ -143,17 +152,15 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     prompt1 = get_error_fixing_prompt_english(template_prompt, compile_error)
                 else:
                     prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details,pointer_functions)
+                
+                experience = f"""
+                以下是你上几轮失败的改错的操作和报错信息，请不要按之前相同的做法进行改错，尝试新的思路改错，避免重复犯错：
+                {trajectory_memory.get_context()}
+                """
+                prompt1 += experience
+
                 debug(f"Prompt length: {len(prompt1)}")
-                if len(prompt1) < max_history_limit_tokens:
-                    i = 0
-                    while len(prompt1) < max_history_limit_tokens and i < len(conversation_history):
-                        latest_entry = conversation_history[-1 - i]
-                        history_prompt = f"Prompt: {latest_entry['prompt']}\nResponse: {latest_entry['response']}\n"
-                        prompt1 = history_prompt + prompt1
-                        i += 1
-                    if i > 0:
-                        prompt1 = 'history:\n' + prompt1
-                        debug(f"Prompt length after history: {len(prompt1)}")
+
                 response = generate_response(prompt1+warning,llm_model,min(retry_count * 0.02, 0.2)).replace("```rust", "").replace("```", "")
                 debug(response)
                 response_non_function_content, response_function_content_dict, _ = deduplicate_code(response,tmp_dir)
@@ -161,9 +168,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 for key, value in response_function_content_dict.items():
                     if key in temp_function_content_dict:
-                        if key not in data_manager.all_pointer_funcs:
+                        if key not in data_manager.all_pointer_funcs or key == func_name:
                             temp_function_content_dict[key] = value
-                        elif key != func_name and remove_comments_and_whitespace(data_manager.get_result(key,results)) != remove_comments_and_whitespace(value):
+                        elif remove_comments_and_whitespace(data_manager.get_result(key,results)) != remove_comments_and_whitespace(value):
                             logger.info(f"Function Pointer {key} has been modified ...")
                             warning += f"\n// 注意：一定不要修改函数体{key}的函数定义，否则会出错 \n"
                             break
@@ -175,32 +182,13 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if func_name not in temp_function_content_dict or 'main' not in temp_function_content_dict:
                     retry_count = max_retries
                     continue
-
-                # template = response
                 
-                # 保存对话历史
-                conversation_history.append({
-                    "prompt": compile_error,
-                    "response": response,
-                })
-                if len(conversation_history) > max_history_length:
-                    conversation_history.pop(0)
             else:
                 debug(f"Compilation successful for {func_name}!")
                 debug("##################################################################################################")
 
                 if all_files == set():
-                    # for func in all_child_func_list:
-                    #     temp_func = data_manager.get_all_parent_functions(func, funcs_child)
-                    #     if temp_func != set():
-                    #         extended_funcs = [f for f in temp_func if f not in all_child_func_list and data_manager.get_result(f,results) != '']
-                    #         extended_child_funcs = set()
-                    #         for parent_func in extended_funcs:
-                    #             child_funcs = data_manager.get_all_child_functions(parent_func, funcs_child)
-                    #             extended_child_funcs = extended_child_funcs.union(child_funcs)
-                    #         all_child_func_list.extend(extended_funcs)
-                    #         all_child_func_list.extend([func for func in extended_child_funcs if func not in all_child_func_list and data_manager.get_result(func,results) != ''])
-                    
+
                     extended_child_funcs = set()
                     for parent_func in all_child_func_list:
                         child_funcs = data_manager.get_all_child_functions(parent_func, funcs_child)
@@ -307,7 +295,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 results_copy[source_name][func_name] += extra_content
 
                 if func_name in data_manager.all_pointer_funcs:
-                    results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'{data_manager.comment}', 1)
+                    results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'\n{data_manager.comment}', 1)
 
                 # if source_name in src_names:
                 #     results[source_name]['extra'] = non_function_content
@@ -429,7 +417,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             
             with lock:
                 total_regenerate_count += 1
-            conversation_history = []
+            # conversation_history = []
+            trajectory_memory.clear()
     
     shutil.rmtree(tmp_dir)
     return  results, all_error_funcs_content, once_retry_count_dict
@@ -649,36 +638,36 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    # test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
-    # test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
-    # test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
-    # src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
-    # src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
-    # src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
-    # source_path = test_path
-    # source_path.extend(src_path)
+    test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
+    test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
+    test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
+    src_path = os.listdir(os.path.join(tmp_dir, 'src_json'))
+    src_path = [os.path.join(tmp_dir, 'src_json', f) for f in src_path]
+    src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
+    source_path = test_path
+    source_path.extend(src_path)
 
-    source_path = [
-        os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
-        os.path.join(tmp_dir,'src_json/tinyexpr.json'),
-        os.path.join(tmp_dir,'test_json/test-utf8-decoder.json'),
-        os.path.join(tmp_dir,'src_json/utf8-decoder.json'),
-    ]
-    src_names = ['utf8-decoder','tinyexpr']
-    test_names = ['test-utf8-decoder','test-tinyexpr']
+    # source_path = [
+    #     os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
+    #     os.path.join(tmp_dir,'src_json/tinyexpr.json'),
+    #     os.path.join(tmp_dir,'test_json/test-utf8-decoder.json'),
+    #     os.path.join(tmp_dir,'src_json/utf8-decoder.json'),
+    # ]
+    # src_names = ['utf8-decoder','tinyexpr']
+    # test_names = ['test-utf8-decoder','test-tinyexpr']
 
-    source_path += [
-        os.path.join(tmp_dir,'src_json/compare-int.json'),
-        os.path.join(tmp_dir,'src_json/compare-pointer.json'),
-        os.path.join(tmp_dir,'src_json/compare-string.json'),
-        os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
-        os.path.join(tmp_dir,'src_json/sortedarray.json'),
-        os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
-        os.path.join(tmp_dir,'src_json/arraylist.json'),
-        os.path.join(tmp_dir,'test_json/test-arraylist.json'),
-    ]
-    src_names += ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    test_names += ['test-compare-functions','test-sortedarray','test-arraylist']
+    # source_path += [
+    #     os.path.join(tmp_dir,'src_json/compare-int.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
+    #     os.path.join(tmp_dir,'src_json/compare-string.json'),
+    #     os.path.join(tmp_dir,'test_json/test-compare-functions.json'),
+    #     os.path.join(tmp_dir,'src_json/sortedarray.json'),
+    #     os.path.join(tmp_dir,'test_json/test-sortedarray.json'),
+    #     os.path.join(tmp_dir,'src_json/arraylist.json'),
+    #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
+    # ]
+    # src_names += ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    # test_names += ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []

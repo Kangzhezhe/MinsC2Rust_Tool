@@ -1,3 +1,40 @@
+
+from models.llm_model import generate_response
+import difflib
+
+def compare_strings(str1, str2):
+    # 使用 difflib.ndiff 比较两个字符串
+    diff = difflib.ndiff(str1.splitlines(), str2.splitlines())
+    # 将差异结果转换为列表
+    diff_list = list(diff)
+    # 将差异结果转换为字符串
+    diff_str = '\n'.join(diff_list)
+    return diff_str
+
+def get_trajectory(input_dict,response,test_error,llm_model):
+
+    trajectory_prompt = f"""
+    你是一个代码诊断专家，你之前有一个代码的改错任务，但是你改出来的代码仍然有错误存在，
+    请你简单对比改错前后代码，描述这一次修改的过程，具体哪个地方的代码前后是怎么改的，报错信息是什么,以便你的之后的改错过程不再犯相同的错误：
+
+    ## 使用 difflib库比较本次改错前后的代码的改动：
+    {compare_strings(input_dict,response)}
+    ## 本次改错的报错信息：
+    {test_error}
+    
+    请按以下步骤思考：
+    1. 提取这一轮改错前后的完整语句 （如：这一次我修改/插入/删除了XXX语句...）
+    2. 提取这一次的报错信息的关键信息 （如：这一次报错内容是XXX语句，报错内容）
+
+    只返回本次改错过程和报错信息的描述，不要给出下一次修改的建议和分析，避免影响下一次的判断
+    用一段话描述但是不能缺少关键语句的详细信息
+    返回格式为文本格式，不需要包含代码块，只需要包含文字描述即可。
+    """
+
+    trajectory_response = generate_response(trajectory_prompt, llm_model, temperature=0)
+    return trajectory_response
+
+
 def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context, before_details, source_context,pointer_functions):
     ask = f"""
         1. 使用纯Rust特性，不使用unsafe代码。
