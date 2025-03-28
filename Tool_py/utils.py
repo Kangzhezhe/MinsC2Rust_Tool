@@ -24,7 +24,7 @@ def find_elements(list1, list2):
     set2 = set(list2)
     return [element for element in list1 if element in set2]
 
-def extract_related_items(source_str, target_str,names_list,not_found = False):
+def extract_related_items(source_str, target_str,names_list,not_found = False,exlude_str = ""):
     """
     从 source_str 中提取关键字，并在 target_str 中查找包含这些关键字的相关子串。
 
@@ -46,9 +46,14 @@ def extract_related_items(source_str, target_str,names_list,not_found = False):
     if  not_found:
         not_found_vars = re.findall( r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', source_str)
         keywords = {var for var in not_found_vars  if var in names_list}
+
+        excluded_vars = re.findall( r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', exlude_str)
+        excluded_keywords = {var for var in excluded_vars  if var in names_list}
+
+        filtered_keywords = keywords - excluded_keywords
         # 在 target_str 中查找包含这些关键字的所有子串
         related_items = set()
-        for keyword in keywords:
+        for keyword in filtered_keywords:
             matches = re.findall(rf"'[^']*\b{keyword}\b[^']*'", target_str)
             related_items.update(matches)
 

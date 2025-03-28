@@ -74,7 +74,7 @@ def process_files(compile_commands_path, output_dir):
         os.makedirs(output_sub_dir, exist_ok=True)
 
         output_filename = os.path.join(output_sub_dir, os.path.basename(c_filename))
-        include_dirs = [arg[2:] for arg in entry['command'].split() if arg.startswith('-I')]
+        include_dirs = [arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')]
 
         # 合并文件内容并保存到输出文件
         included_files = merge_files(c_filename, output_filename, include_dirs)

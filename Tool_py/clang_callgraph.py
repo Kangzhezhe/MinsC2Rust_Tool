@@ -205,7 +205,7 @@ def analyze_source_files(cfg):
     for cmd in read_compile_commands(cfg['db']):
         index = Index.create()
         c = [
-            x for x in cmd['command'].split()
+            x for x in cmd.get('command','').split()
             if keep_arg(x)
         ] + cfg['clang_args']
         tu = index.parse(cmd['file'], c)

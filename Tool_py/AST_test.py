@@ -52,7 +52,9 @@ def parse_c_file(filename):
         # 指定 cpp 路径
         ast = parse_file(filename, use_cpp=True,
                          cpp_path='/usr/bin/cpp',
-                         cpp_args=f'-I{fake_libc_include_path}')
+                         cpp_args=[
+                             f'-I{fake_libc_include_path}'
+                             ])
 
         # print("解析成功，生成的 AST 树如下：")
         return ast

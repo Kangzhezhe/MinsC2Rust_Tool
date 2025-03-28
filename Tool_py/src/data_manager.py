@@ -78,8 +78,9 @@ class DataManager:
                 return v[func_name]
         return ''
 
-    def get_child_context(self, func_name, results, funcs_child):
+    def get_child_context(self, func_name, results, funcs_child, prompt_limit=float('inf')):
         child_context = set()
+        child_context_ret = ""
         extra_contents = []
         source_name = self.get_source_name_by_func_name(func_name)
         extra_content = results[source_name].get('extra', '')
@@ -89,15 +90,19 @@ class DataManager:
         if func_name in funcs_child:
             all_child_funs = self.get_all_child_functions(func_name, funcs_child)
             for child_fun in all_child_funs:
-                if child_fun != func_name and self.get_result(child_fun, results) != '':
-                    child_funs += child_fun + ","
+                child_func_content =  self.get_result(child_fun, results)
+                if child_fun != func_name and child_func_content != '':
                     extra = results[self.get_source_name_by_func_name(child_fun)].get('extra', '')
                     if extra and extra not in extra_contents:
                         extra_contents.append(extra)
-                    # child_context.add(self.get_result(child_fun, results).lstrip().split('\n', 1)[0][:-1])
-                    child_context.add(self.get_result(child_fun, results))
-        child_context = '\n'.join(extra_contents + list(child_context))
-        return child_context, child_funs
+                    if len(child_func_content) + len(child_context_ret) > prompt_limit:
+                        child_context.add(child_func_content.lstrip().split('\n', 1)[0].replace('{', ';'))
+                    else:
+                        child_funs += child_fun + ","
+                        child_context.add(child_func_content)
+                    child_context_ret = '\n'.join(extra_contents + list(child_context))
+        child_context_ret = '\n'.join(extra_contents + list(child_context))
+        return child_context_ret, child_funs
 
     def get_child_context_c(self, func_name, results, funcs_child):
         source_context, source_extra, i = self.get_content(func_name)
@@ -139,16 +144,17 @@ class DataManager:
         return names_list, remaining_details
 
     def get_all_child_functions(self, func_name, funcs_child):
-        all_child_funs = set()
+        all_child_funs = []
+        queue = [func_name]  # 使用队列进行广度优先遍历
 
-        def add_child_functions(func):
-            if func in funcs_child:
-                for child_fun in funcs_child[func]:
-                    if child_fun not in all_child_funs:
-                        all_child_funs.add(child_fun)
-                        add_child_functions(child_fun)
+        while queue:
+            current_func = queue.pop(0)  # 取出队列中的第一个节点
+            if current_func in funcs_child:
+                for child_fun in funcs_child[current_func]:
+                    if child_fun not in all_child_funs:  # 避免重复添加
+                        all_child_funs.append(child_fun)
+                        queue.append(child_fun)  # 将子节点加入队列
 
-        add_child_functions(func_name)
         return all_child_funs
 
     def get_all_parent_functions(self,func_name, funcs_child):

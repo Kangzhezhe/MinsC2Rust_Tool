@@ -60,13 +60,14 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             results[source_name] = {}
 
     source_context, child_funs_c, sourc_extra = data_manager.get_child_context_c(func_name, results, funcs_child)
+    child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
+
     child_funs_c_list = child_funs_c.strip(',').split(',')
     names_list,before_details = data_manager.get_details(child_funs_c_list)
-    before_details1 = extract_related_items(source_context,before_details,names_list,not_found=True)
-    before_details = extract_related_items(before_details1,before_details,names_list,not_found=True)
+    before_details1 = extract_related_items(source_context,before_details,names_list,not_found=True,exlude_str=child_context)
+    before_details = extract_related_items(before_details1,before_details,names_list,not_found=True,exlude_str=child_context)
     debug(f"before_details: {before_details}")
 
-    child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
@@ -75,15 +76,24 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         shutil.rmtree(tmp_dir)
         return
 
+    
+    child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(before_details)-len(source_context))
+    child_funs_prompt_list = child_funs_prompt_list.strip(',').split(',')
+
     if params['enable_english_prompt']:
-        prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context, before_details,source_context)
+        prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context_prompt, before_details,source_context)
     else:
-        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context, before_details,source_context,pointer_functions)
+        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context_prompt, before_details,source_context,pointer_functions)
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
     logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
     debug(f"Prompt length: {len(prompt)}")
     response = generate_response(prompt, llm_model)
+
+    if response == "上下文长度超过限制":
+        all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
+        shutil.rmtree(tmp_dir)
+        return
     debug(response)
     text_remove = response.replace("```rust", "").replace("```", "")
 
@@ -107,7 +117,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     
     error_funcs = find_elements(child_funs_c_list,all_error_funcs_content.get(source_name,[]))
     max_regenerations -= len(error_funcs)
-    max_retries -= len(error_funcs) * 3
+    max_retries -= len(error_funcs) * 2
 
     retry_count = 0
     regenerate_count = 0
@@ -115,7 +125,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     added_funcs = set()
     all_files = set()
     warning = ''
-    response_function_content_dict = {}
+    response_function_content_dict = {key: '' for key in child_funs_prompt_list}
+    logger.info(f"repair function list: {response_function_content_dict.keys()}")
     template_prompt = ''
     while 1:
         if retry_count < max_retries:
@@ -142,7 +153,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
                     function_names = re.findall(r'fn\s+(\w+)', compile_error)
                     for f in function_names:
-                        if f in temp_function_content_dict:
+                        if f in temp_function_content_dict and (f in child_funs_prompt_list or f in added_funcs):
                             response_function_content_dict[f] = ''
                     for f in child_funs_c_list:
                         if f not in response_function_content_dict:
@@ -700,7 +711,7 @@ async def main():
     for f in source_path:
         with open(f, 'r') as file:
             data.append(json.load(file))
-    
+
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer)   
 
 

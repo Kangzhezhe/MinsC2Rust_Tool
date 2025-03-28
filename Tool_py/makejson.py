@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     cfg = read_config(config_path)
     src_dir = cfg['Paths']['src_dir']
-    test_dir = cfg['Paths']['test_dir']
+    test_dir = cfg['Paths'].get('test_dir','')
     func_result_dir = cfg['Paths']['func_result_dir']
     tmp_dir = cfg['Paths']['tmp_dir']
     compile_commands_path = cfg['Paths']['compile_commands_path']
@@ -37,15 +37,16 @@ if __name__ == "__main__":
                     os.path.join(tmp_dir,"src"), # 函数内容
                     os.path.join(tmp_dir,"src_json"))   # 函数分割保存
 
-    # 获取函数名称
-    get_c_functions_name(test_dir, # 函数内容
-                         os.path.join(func_result_dir,"new_test.json"), # 函数名称保存
-                         compile_commands_path)
-    # 函数名正则化
-    output_process_re.process_file_func_name(os.path.join(func_result_dir,"new_test.json"), # 未处理json格式
-                                             os.path.join(func_result_dir,"new_test_processed.json")) # 正则化处理后文件路径
+    if test_dir != '':
+        # 获取函数名称
+        get_c_functions_name(test_dir, # 函数内容
+                            os.path.join(func_result_dir,"new_test.json"), # 函数名称保存
+                            compile_commands_path)
+        # 函数名正则化
+        output_process_re.process_file_func_name(os.path.join(func_result_dir,"new_test.json"), # 未处理json格式
+                                                os.path.join(func_result_dir,"new_test_processed.json")) # 正则化处理后文件路径
 
-    # 函数内容分割到json
-    content_extract(os.path.join(func_result_dir,"new_test_processed.json"), # 函数名称
-                    os.path.join(tmp_dir,"test"), # 函数内容
-                    os.path.join(tmp_dir,"test_json"))   # 函数分割保存
+        # 函数内容分割到json
+        content_extract(os.path.join(func_result_dir,"new_test_processed.json"), # 函数名称
+                        os.path.join(tmp_dir,"test"), # 函数内容
+                        os.path.join(tmp_dir,"test_json"))   # 函数分割保存
