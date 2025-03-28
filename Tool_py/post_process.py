@@ -151,9 +151,8 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #             test_error, failed_tests = run_tests_and_get_failed_cases(output_project_path, source,funcs_child)
     #             if len(failed_tests) == 0:
     #                 continue
-    #             test_case, error_message =  next(iter(failed_tests.items()))
-    #             remaining_cnt = len(failed_tests)
-    #             while remaining_cnt > 0:
+    #             all_test_cases = failed_tests.keys()
+    #             for test_case in all_test_cases:
     #                 print(f"Processing {source}:{test_case}, remain len(failed_tests): {len(failed_tests)}...")
     #                 if test_case in results_copy[source]:
     #                     test_error = ''
@@ -271,14 +270,11 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #                         retry_count += 1
 
     #                     trajectory_memory.clear()
-    #                     remaining_cnt = len(failed_tests)
     #                     if len(failed_tests) == 0:
     #                         break
-    #                     test_case, error_message =  next(iter(failed_tests.items()))
                         
-    #             import ipdb;ipdb.set_trace()
+    #             results = results_copy
 
-                
     print("Running tests...")
 
     update_test_timeout(f'{output_project_path}/tests', test_timeout)
@@ -498,6 +494,5 @@ if __name__ == "__main__":
             data.append(json.load(file))
     
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer) 
-
 
     post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only,test_timeout=params.get('test_timeout',60000))

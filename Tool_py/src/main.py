@@ -61,7 +61,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
     source_context, child_funs_c, sourc_extra = data_manager.get_child_context_c(func_name, results, funcs_child)
     child_funs_c_list = child_funs_c.strip(',').split(',')
-    before_details = data_manager.get_details(child_funs_c_list)
+    names_list,before_details = data_manager.get_details(child_funs_c_list)
+    before_details1 = extract_related_items(source_context,before_details,names_list,not_found=True)
+    before_details = extract_related_items(before_details1,before_details,names_list,not_found=True)
+    debug(f"before_details: {before_details}")
+
     child_context, child_funs = data_manager.get_child_context(func_name, results, funcs_child)
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
@@ -100,6 +104,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if test_source_name == 'test-tinyexpr':
         max_regenerations -= 2
         max_retries = min(2+depth, 12)
+    
+    error_funcs = find_elements(child_funs_c_list,all_error_funcs_content.get(source_name,[]))
+    max_regenerations -= len(error_funcs)
+    max_retries -= len(error_funcs) * 3
 
     retry_count = 0
     regenerate_count = 0
@@ -133,12 +141,14 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if response_function_content_dict != {}:
                     temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
                     function_names = re.findall(r'fn\s+(\w+)', compile_error)
-                    logger.info(f"compile error function_names: {function_names}")
                     for f in function_names:
                         if f in temp_function_content_dict:
                             response_function_content_dict[f] = ''
-                    if func_name not in response_function_content_dict:
-                        response_function_content_dict[func_name] = ''
+                    for f in child_funs_c_list:
+                        if f not in response_function_content_dict:
+                            response_function_content_dict[f] = ''
+                    
+                    logger.info(f"repair function list: {response_function_content_dict.keys()}")
                     
                     new_function_content_dict = {key: temp_function_content_dict[key] for key in temp_function_content_dict if key in response_function_content_dict}
                     template_prompt = get_output_content(temp_non_function_content, new_function_content_dict)
@@ -151,7 +161,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template_prompt, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details,pointer_functions)
+                    prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details,pointer_functions,names_list)
                 
                 experience = f"""
                 以下是你上几轮失败的改错的操作和报错信息，请不要按之前相同的做法进行改错，尝试新的思路改错，避免重复犯错：
@@ -280,7 +290,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     name = source_names[i]
                     if name not in results_copy:
                         results_copy[name] = {}
-                    if k not in data_manager.all_pointer_funcs:
+                    if k not in data_manager.all_pointer_funcs or k not in results_copy[name]:
                         results_copy[name][k] = v
                     elif k != func_name and remove_comments_and_whitespace(results_copy[name][k]) != remove_comments_and_whitespace(v):
                         logger.info(f"Function Pointer {k} has been modified, skipping...")
@@ -332,6 +342,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         response = generate_response(prompt1,llm_model,0)
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
+                        if response == None:
+                            continue
                         try:
                             first_brace_index = re.search(r'{', response).start()
                             json_substr = response[first_brace_index:]

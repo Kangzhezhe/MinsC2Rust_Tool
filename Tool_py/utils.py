@@ -10,6 +10,54 @@ import shutil
 
 import signal
 
+def find_elements(list1, list2):
+    """
+    在两个列表中查找交集元素。
+
+    参数:
+        list1 (list): 第一个列表。
+        list2 (list): 第二个列表。
+
+    返回:
+        list: 包含两个列表中共有元素的列表。
+    """
+    set2 = set(list2)
+    return [element for element in list1 if element in set2]
+
+def extract_related_items(source_str, target_str,names_list,not_found = False):
+    """
+    从 source_str 中提取关键字，并在 target_str 中查找包含这些关键字的相关子串。
+
+    参数:
+        source_str (str): 包含关键字的源字符串。
+        target_str (str): 需要匹配关键字的目标字符串。
+
+    返回:
+        list: 包含所有相关子串的列表（去重）。
+    """
+
+    not_found_keywords = ['not found', 'in this scope', 'not bound', 'cannot find', 'undeclared', 'undefined','error[E0425]','error[E0408]']
+    
+    for keyword in not_found_keywords:
+        if keyword in source_str:
+            not_found = True
+            break
+
+    if  not_found:
+        not_found_vars = re.findall( r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', source_str)
+        keywords = {var for var in not_found_vars  if var in names_list}
+        # 在 target_str 中查找包含这些关键字的所有子串
+        related_items = set()
+        for keyword in keywords:
+            matches = re.findall(rf"'[^']*\b{keyword}\b[^']*'", target_str)
+            related_items.update(matches)
+
+        return "".join(related_items)
+
+    else:    
+        return ""
+
+
 def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
     compile_error2 = ''
     for file in all_files:

@@ -136,7 +136,8 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
                 # 将结果读取成json格式
                 with open(output_filename, 'r', encoding='utf-8') as file:
                     content = file.read()
-                    result[func_signature] = content
+                    if content:
+                        result[func_signature] = content
             
             delete_file_if_exists("function_context.txt")
 

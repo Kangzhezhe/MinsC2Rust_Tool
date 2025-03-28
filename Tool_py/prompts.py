@@ -1,6 +1,7 @@
 
 from models.llm_model import generate_response
 import difflib
+from utils import debug, extract_related_items
 
 def compare_strings(str1, str2):
     # 使用 difflib.ndiff 比较两个字符串
@@ -83,7 +84,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
     """
 
 # 0. 部分函数不允许修改，已在注释中说明了，因为工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能：
-def get_error_fixing_prompt(template, compile_error,before_details,pointer_functions):
+def get_error_fixing_prompt(template, compile_error,before_details,pointer_functions,names_list):
     return f"""
         Prompt:
         帮我修改以下rust代码中出现的编译错误，只返回所有全局变量、结构体、全局变量、宏定义、枚举定义和被修改后的函数：
@@ -103,9 +104,10 @@ def get_error_fixing_prompt(template, compile_error,before_details,pointer_funct
         11. 对于c语言标准库函数比如stdio,math库等，需要转换成rust对应的标准库函数，不要使用自定义函数替代标准库函数，对于random库函数，使用确定的数据代替
         12. 保留所有的注释，不要删除任何注释
         13. 不要定义新的函数，只需要修改已有的允许修改的函数，如果没有修改的函数的话，不需要返回，只返回全局变量，结构体，宏，枚举定义
+        14. 如果出现位运算类型不匹配的错误，请将在运算的地方将常量用（as）语句转换为与操作数相同的类型，确保类型一致性，尽量不要改变原有的数据类型
 
-        * 待改错内容：{template+'//编译器错误信息：'+compile_error}
-        * 返回格式：
+        ** 待改错内容：{template+'//编译器错误信息：'+compile_error}
+        ** 返回格式：
             所有完整的全局变量、结构体、全局变量、宏定义、枚举定义、模块导入语句等代码中的非函数部分
             pub fun func1(){{有改动的函数1}}
             pub fun func2(){{有改动的函数2}}

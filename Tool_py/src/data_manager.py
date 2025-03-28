@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 class DataManager:
     def __init__(self, source_path,include_dict,all_pointer_funcs,include_dict_without_fn_pointer):
@@ -124,7 +125,18 @@ class DataManager:
                 if detail not in seen_details:
                     seen_details.add(detail)
                     before_details += '\n' + detail
-        return before_details
+
+        names_pattern = r"Names:\s*\[(.*?)\]"
+        names_match = re.search(names_pattern, before_details, re.DOTALL)
+        if names_match:
+            names_list = eval(f"[{names_match.group(1)}]")  # 将匹配的内容转换为 Python 列表
+            # 提取 Names 部分后的剩余字符串
+            remaining_details = before_details.replace(names_match.group(0), "").strip()
+        else:
+            names_list = []
+            remaining_details = before_details.strip()
+
+        return names_list, remaining_details
 
     def get_all_child_functions(self, func_name, funcs_child):
         all_child_funs = set()
