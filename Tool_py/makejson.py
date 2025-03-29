@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 from func_result import output_process_re
 from parse_config import read_config
 from merge_c_h import process_files
+import shutil
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -50,3 +51,13 @@ if __name__ == "__main__":
         content_extract(os.path.join(func_result_dir,"new_test_processed.json"), # 函数名称
                         os.path.join(tmp_dir,"test"), # 函数内容
                         os.path.join(tmp_dir,"test_json"))   # 函数分割保存
+
+    else:
+        shutil.copy(os.path.join(func_result_dir, 'new_src_processed.json'), 
+            os.path.join(func_result_dir, 'new_test_processed.json'))
+
+        if os.path.exists(os.path.join(tmp_dir, 'test_json')):
+            shutil.rmtree(os.path.join(tmp_dir, 'test_json'))  # 删除目标目录
+
+        shutil.copytree(os.path.join(tmp_dir, 'src_json'), 
+                    os.path.join(tmp_dir, 'test_json'))

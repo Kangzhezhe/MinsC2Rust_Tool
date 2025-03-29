@@ -72,6 +72,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
     if len(child_funs_c_list)>8:
+        if source_name not in all_error_funcs_content:
+            all_error_funcs_content[source_name] = {}
         all_error_funcs_content[source_name][func_name] =   '//同时处理的函数过多，无法处理' 
         shutil.rmtree(tmp_dir)
         return

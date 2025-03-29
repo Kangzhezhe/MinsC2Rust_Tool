@@ -408,7 +408,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     cfg['db'] = compile_commands_path
     load_config_file(cfg)
     analyze_source_files(cfg)
-    
+
     with open('../func_result/new_test_processed.json', 'r') as json_file:
         data = json.load(json_file)[0]
 
