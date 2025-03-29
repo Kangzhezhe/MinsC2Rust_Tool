@@ -172,7 +172,9 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 if params['enable_english_prompt']:
                     prompt1 = get_error_fixing_prompt_english(template_prompt, compile_error)
                 else:
-                    prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details,pointer_functions,names_list)
+                    before_details_compile = extract_related_items(compile_error,before_details,names_list,exlude_str=child_context)
+                    logger.info(f"before_details_compile: {before_details_compile}")
+                    prompt1 = get_error_fixing_prompt(template_prompt, compile_error,before_details_compile,pointer_functions,names_list)
                 
                 experience = f"""
                 以下是你上几轮失败的改错的操作和报错信息，请不要按之前相同的做法进行改错，尝试新的思路改错，避免重复犯错：
@@ -338,7 +340,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                             for sub_key, sub_value in value_dict.items():
                                 if key == source_name and sub_key == func_name or sub_key == 'extra':
                                     first_lines[key][sub_key] = sub_value
-                                else:
+                                elif sub_key in child_funs_prompt_list:
                                     first_line = sub_value.lstrip().split('\n', 1)[0].replace('{', ';')
                                     first_lines[key][sub_key] = first_line
                     compile_error2 = ''
@@ -679,7 +681,7 @@ async def main():
     # src_names = ['utf8-decoder','tinyexpr']
     # test_names = ['test-utf8-decoder','test-tinyexpr']
 
-    # source_path += [
+    # source_path = [
     #     os.path.join(tmp_dir,'src_json/compare-int.json'),
     #     os.path.join(tmp_dir,'src_json/compare-pointer.json'),
     #     os.path.join(tmp_dir,'src_json/compare-string.json'),
@@ -689,8 +691,8 @@ async def main():
     #     os.path.join(tmp_dir,'src_json/arraylist.json'),
     #     os.path.join(tmp_dir,'test_json/test-arraylist.json'),
     # ]
-    # src_names += ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
-    # test_names += ['test-compare-functions','test-sortedarray','test-arraylist']
+    # src_names = ['compare-int','compare-pointer','compare-string','sortedarray','arraylist']
+    # test_names = ['test-compare-functions','test-sortedarray','test-arraylist']
 
 
     files_to_remove = []
