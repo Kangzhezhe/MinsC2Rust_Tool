@@ -162,6 +162,13 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
             with open(output_file, 'w') as json_file:
                 json.dump(result, json_file, indent=4)
 
+            data[0][file_name] = [key for key in result.keys() if key != 'extra']
+    
+    with open(func_json_path, 'w') as json_file:
+        json.dump(data, json_file, indent=4)
+
+            
+
 
 # 文件范围内函数指针依赖访问者
 class FileScopeFunctionPointerVisitor(c_ast.NodeVisitor):

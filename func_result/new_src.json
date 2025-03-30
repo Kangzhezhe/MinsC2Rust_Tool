@@ -1,36 +1,160 @@
 [
     {
-        "libtree.c": [
-            "print_error(size_t, size_t, struct small_vec_u64_t *, char *, struct libtree_state_t *, int)",
-            "small_vec_u64_init(struct small_vec_u64_t *)",
-            "small_vec_u64_free(struct small_vec_u64_t *)",
-            "print_colon_delimited_paths(const char *, const char *)",
-            "print_tree(int, char **, struct libtree_state_t *)",
-            "string_table_maybe_grow(struct string_table_t *, size_t)",
-            "main(int, char **)",
-            "parse_ld_config_file(struct string_table_t *, char *)",
-            "small_vec_u64_append(struct small_vec_u64_t *, uint64_t)",
-            "is_in_exclude_list(char *)",
-            "is_ascending_order(uint64_t *, size_t)",
-            "interpolate_variables(struct libtree_state_t *, size_t, const char *)",
-            "tree_preamble(struct libtree_state_t *, size_t)",
-            "parse_ld_so_conf(struct libtree_state_t *)",
-            "ld_conf_globbing(struct string_table_t *, char *)",
-            "libtree_state_free(struct libtree_state_t *)",
-            "set_default_paths(struct libtree_state_t *)",
-            "parse_ld_library_path(struct libtree_state_t *)",
-            "visited_files_contains(struct visited_file_array_t *, struct stat *)",
-            "print_line(size_t, char *, char *, char *, int, struct found_t, struct libtree_state_t *)",
-            "recurse(char *, size_t, struct libtree_state_t *, struct compat_t, struct found_t)",
-            "string_table_copy_from_file(struct string_table_t *, FILE *)",
-            "string_table_store(struct string_table_t *, const char *)",
-            "apply_exclude_list(size_t *, struct small_vec_u64_t *, struct libtree_state_t *)",
-            "libtree_state_init(struct libtree_state_t *)",
-            "utoa(char *, size_t)",
-            "visited_files_append(struct visited_file_array_t *, struct stat *)",
-            "check_absolute_paths(size_t *, struct small_vec_u64_t *, size_t, struct libtree_state_t *, struct compat_t)",
-            "host_is_little_endian()",
-            "check_search_paths(struct found_t, size_t, size_t *, struct small_vec_u64_t *, size_t, struct libtree_state_t *, struct compat_t)"
+        "signal.c": [
+            "strip_escapes(const char *)",
+            "sighup_handler(int)",
+            "set_window_lines(const int)",
+            "parse_int(int *const, const char *const, const char **const)",
+            "resize_undo_buffer(undo_t **const, int *const, const int)",
+            "sigint_handler(int)",
+            "set_signal(int, void (*)(int))",
+            "set_signals()",
+            "resize_buffer(char **const, int *const, const int)",
+            "disable_interrupts()",
+            "sigwinch_handler(int)",
+            "resize_line_buffer(const line_t ***const, int *const, const int)",
+            "window_columns()",
+            "enable_interrupts()",
+            "window_lines()"
+        ]
+    },
+    {
+        "buffer.c": [
+            "set_binary()",
+            "copy_lines(const int, const int, const int)",
+            "last_addr()",
+            "set_newline_added()",
+            "insert_node(line_t *const, line_t *const)",
+            "put_sbuf_line(const char *const, const int, const int)",
+            "newline_added()",
+            "dec_addr(int)",
+            "append_lines(const char **const, const int, const bool)",
+            "open_sbuf()",
+            "search_line_node(const int)",
+            "modified()",
+            "delete_lines(const int, const int, const bool)",
+            "get_sbuf_line(const line_t *const)",
+            "undo(const bool)",
+            "close_sbuf()",
+            "init_buffers()",
+            "put_lines(const int)",
+            "set_modified(const bool)",
+            "reset_undo_state()",
+            "move_lines(const int, const int, const int, const bool)",
+            "push_undo_atom(const int, const int, const int)",
+            "link_nodes(line_t *const, line_t *const)",
+            "inc_current_addr()",
+            "join_lines(const int, const int, const bool)",
+            "inc_addr(int)",
+            "clear_undo_stack()",
+            "set_current_addr(const int)",
+            "yank_lines(const int, const int)",
+            "dup_line_node(line_t *const)",
+            "clear_yank_buffer()",
+            "add_line_node(line_t *const, const int)",
+            "current_addr()",
+            "get_line_node_addr(const line_t *const)",
+            "path_max(const char *)",
+            "isbinary()"
+        ]
+    },
+    {
+        "carg_parser.c": [
+            "free_data(struct Arg_parser *const)",
+            "parse_long_option(struct Arg_parser *const, const char *const, const char *const, const struct ap_Option *, int *const)",
+            "add_error(struct Arg_parser *const, const char *const)",
+            "ap_resize_buffer(void *, const int)",
+            "ap_init(struct Arg_parser *const, const int, const char *const *, const struct ap_Option *, const char)",
+            "ap_code(const struct Arg_parser *const, const int)",
+            "push_back_record(struct Arg_parser *const, const int, const char *const)",
+            "ap_argument(const struct Arg_parser *const, const int)",
+            "ap_error(const struct Arg_parser *const)",
+            "parse_short_option(struct Arg_parser *const, const char *const, const char *const, const struct ap_Option *, int *const)",
+            "ap_free(struct Arg_parser *const)",
+            "ap_arguments(const struct Arg_parser *const)"
+        ]
+    },
+    {
+        "main.c": [
+            "show_version()",
+            "show_error(const char *const, const int, const _Bool)",
+            "restricted()",
+            "is_regular_file(const int)",
+            "main_loop(const _Bool)",
+            "may_access_filename(const char *const)",
+            "show_help()",
+            "traditional()",
+            "scripted()",
+            "main(const int, const char *const *)",
+            "show_strerror(const char *const, const int)"
+        ]
+    },
+    {
+        "main_loop.c": [
+            "get_third_addr(const char **const, int *const)",
+            "exec_global(const char **const, const int, const bool)",
+            "command_s(const char **const, int *const, const int, const bool)",
+            "set_prompt(const char *const)",
+            "get_marked_node_addr(int)",
+            "next_addr(const char **const, int *const)",
+            "unexpected_command_suffix(const unsigned char)",
+            "main_loop(const bool)",
+            "invalid_address()",
+            "set_verbose()",
+            "check_current_addr(const int)",
+            "check_addr_range(const int, const int, const int)",
+            "set_error_msg(const char *)",
+            "exec_command(const char **const, const int, const bool)",
+            "get_shell_command(const char **const)",
+            "mark_line_node(const line_t *const, int)",
+            "get_filename(const char **const)",
+            "get_command_suffix(const char **const, int *const)",
+            "unmark_line_node(const line_t *const)",
+            "set_def_filename(const char *const)",
+            "unexpected_address(const int)",
+            "skip_blanks(const char *)",
+            "extract_addr_range(const char **const)"
+        ]
+    },
+    {
+        "io.c": [
+            "get_tty_line(int *const)",
+            "read_file(const char *const, const int)",
+            "display_lines(int, const int, const int)",
+            "write_stream(FILE *const, int, const int)",
+            "read_stream(FILE *const, const int)",
+            "write_file(const char *const, const char *const, const int, const int)",
+            "trailing_escape(const char *const, int)",
+            "read_stream_line(FILE *const, int *const, bool *const)",
+            "get_extended_line(const char **const, int *const, const bool)",
+            "put_tty_line(const char *, int, const int)"
+        ]
+    },
+    {
+        "global.c": [
+            "clear_active_list()",
+            "set_active_node(const line_t *const)",
+            "next_active_node()",
+            "unset_active_nodes(const line_t *, const line_t *const)"
+        ]
+    },
+    {
+        "regex.c": [
+            "build_active_list(const char **const, const int, const int, const bool)",
+            "prev_pattern()",
+            "apply_subst_template(const char *const, const regmatch_t *const, int, const int)",
+            "translit_text(char *, int, const char, const char)",
+            "newline_to_nul(char *const, const int)",
+            "parse_char_class(const char *)",
+            "nul_to_newline(char *const, const int)",
+            "extract_pattern(const char **const, const char)",
+            "replace_matching_text(const line_t *const, const int, const int)",
+            "search_and_replace(const int, const int, const int, const int, const bool)",
+            "get_compiled_pattern(const char **const)",
+            "extract_subst_template(const char **const, const bool)",
+            "new_compiled_pattern(const char **const)",
+            "next_matching_node_addr(const char **const, const bool)",
+            "extract_subst_tail(const char **const, int *const, int *const, const bool)"
         ]
     }
 ]

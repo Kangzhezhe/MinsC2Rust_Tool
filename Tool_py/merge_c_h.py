@@ -10,40 +10,49 @@ def read_file(filename):
     with open(filename, 'r') as file:
         return file.readlines()
 
-# 解析 #include 指令并替换为相应的 .h 文件内容，并将结果保存到输出文件
 def merge_files(c_filename, output_filename, include_dirs):
     include_pattern = re.compile(r'#include\s+"(.+\.h)"')
     merged_lines = []
-    included_files = []
+    included_files = set()  # 使用集合避免重复包含
 
-    # 读取 .c 文件内容
-    c_file_lines = read_file(c_filename)
-
-    for line in c_file_lines:
-        match = include_pattern.match(line)
-        if match:
-            h_filename = match.group(1)
-            h_file_lines = None
-            for include_dir in include_dirs:
-                h_filepath = os.path.join(include_dir, h_filename)
-                if os.path.exists(h_filepath):
-                    h_file_lines = read_file(h_filepath)
-                    included_files.append(os.path.splitext(os.path.basename(h_filepath))[0])  # 去掉路径和后缀
-                    break
-            if h_file_lines:
-                merged_lines.extend(h_file_lines)
+    def process_file(filename, include_dirs):
+        """递归处理文件，解析 #include 语句"""
+        lines = read_file(filename)
+        result_lines = []
+        for line in lines:
+            match = include_pattern.match(line)
+            if match:
+                h_filename = match.group(1)
+                h_file_lines = None
+                for include_dir in include_dirs:
+                    h_filepath = os.path.join(include_dir, h_filename)
+                    if os.path.exists(h_filepath):
+                        if h_filepath not in included_files:  # 避免重复包含
+                            included_files.add(h_filepath)
+                            h_file_lines = process_file(h_filepath, include_dirs)
+                        else:
+                            # 如果已经包含过该文件，则跳过该 #include 语句
+                            print(f"Skipping duplicate include: {h_filename}")
+                        break
+                if h_file_lines:
+                    result_lines.extend(h_file_lines)
+                # 如果文件未找到且未重复，则保留原始 #include 语句
+                elif h_filepath not in included_files:
+                    print(f"Warning: {h_filename} not found in any include directories.")
+                    result_lines.append(line)
             else:
-                print(f"Warning: {h_filename} not found in any include directories.")
-                merged_lines.append(include_pattern.sub(f'#include "{h_filename}"', line))
-        else:
-            merged_lines.append(line)
+                result_lines.append(line)
+        return result_lines
+
+    # 处理 .c 文件
+    merged_lines = process_file(c_filename, include_dirs)
 
     # 将合并后的内容写入输出文件
     with open(output_filename, 'w') as output_file:
         output_file.writelines(merged_lines)
 
     print(f"Merged file saved to {output_filename}")
-    return included_files
+    return [os.path.splitext(os.path.basename(f))[0] for f in included_files]
 
 def read_compile_commands(filename):
     with open(filename, 'r') as file:
@@ -67,7 +76,7 @@ def process_files(compile_commands_path, output_dir):
         elif 'test' in c_filename:
             sub_dir = 'test'
         else:
-            sub_dir = ''
+            sub_dir = 'src'
 
         # 创建输出子目录（如果不存在）
         output_sub_dir = os.path.join(output_dir, sub_dir)
@@ -77,6 +86,7 @@ def process_files(compile_commands_path, output_dir):
         include_dirs = [arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')]
 
         # 合并文件内容并保存到输出文件
+        
         included_files = merge_files(c_filename, output_filename, include_dirs)
         if output_filename not in all_file_paths:
             all_file_paths.append(output_filename)
@@ -84,6 +94,7 @@ def process_files(compile_commands_path, output_dir):
         key = os.path.splitext(os.path.basename(c_filename))[0]
         if key not in excluded_files:
             include_dict[key] = [f for f in filtered_files if f != key]  # 去掉路径和后缀，并排除与键相同的值
+
 
     return include_dict,all_file_paths
 

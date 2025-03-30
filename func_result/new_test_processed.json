@@ -1,36 +1,16 @@
 [
     {
-        "libtree": [
-            "print_error",
-            "small_vec_u64_init",
-            "small_vec_u64_free",
-            "print_colon_delimited_paths",
-            "print_tree",
-            "string_table_maybe_grow",
+        "main": [
+            "show_version",
+            "show_error",
+            "restricted",
+            "is_regular_file",
+            "may_access_filename",
+            "show_help",
+            "traditional",
+            "scripted",
             "main",
-            "parse_ld_config_file",
-            "small_vec_u64_append",
-            "is_in_exclude_list",
-            "is_ascending_order",
-            "interpolate_variables",
-            "tree_preamble",
-            "parse_ld_so_conf",
-            "ld_conf_globbing",
-            "libtree_state_free",
-            "set_default_paths",
-            "parse_ld_library_path",
-            "visited_files_contains",
-            "print_line",
-            "recurse",
-            "string_table_copy_from_file",
-            "string_table_store",
-            "apply_exclude_list",
-            "libtree_state_init",
-            "utoa",
-            "visited_files_append",
-            "check_absolute_paths",
-            "host_is_little_endian",
-            "check_search_paths"
+            "show_strerror"
         ]
     }
 ]

@@ -43,7 +43,10 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
     else:
-        raise ValueError(f"{source_name} is not correct")
+        raise ValueError(f"{func_name} is not correct")
+        # logger.info(f"{func_name} is not correct")
+        # shutil.rmtree(tmp_dir)
+        # return
 
     if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         shutil.rmtree(tmp_dir)
@@ -71,12 +74,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
-    if len(child_funs_c_list)>8:
-        if source_name not in all_error_funcs_content:
-            all_error_funcs_content[source_name] = {}
-        all_error_funcs_content[source_name][func_name] =   '//同时处理的函数过多，无法处理' 
-        shutil.rmtree(tmp_dir)
-        return
+    
 
     
     child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(before_details)-len(source_context))
@@ -89,10 +87,18 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
     logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
+    if len(child_funs_c_list)>12:
+        if source_name not in all_error_funcs_content:
+            all_error_funcs_content[source_name] = {}
+        all_error_funcs_content[source_name][func_name] =   '//同时处理的函数过多，无法处理 :' + str(len(child_funs_c_list))
+        shutil.rmtree(tmp_dir)
+        return
     debug(f"Prompt length: {len(prompt)}")
     response = generate_response(prompt, llm_model)
 
     if response == "上下文长度超过限制":
+        if source_name not in all_error_funcs_content:
+            all_error_funcs_content[source_name] = {}
         all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
         shutil.rmtree(tmp_dir)
         return
@@ -204,7 +210,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 temp_non_function_content = response_non_function_content
                 template = get_output_content(temp_non_function_content, temp_function_content_dict)
 
-                if func_name not in temp_function_content_dict or 'main' not in temp_function_content_dict:
+                func_not_found = False
+                for f in child_funs_c_list:
+                    if f not in temp_function_content_dict:
+                        func_not_found = True
+                if func_not_found or 'main' not in temp_function_content_dict:
                     retry_count = max_retries
                     continue
                 
@@ -357,7 +367,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         response = generate_response(prompt1,llm_model,0)
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
-                        if response == None:
+                        if not response:
                             continue
                         try:
                             first_brace_index = re.search(r'{', response).start()
@@ -404,6 +414,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 compile_error2 =  compile_all_files(data_manager.all_include_files, results_copy, tmp_dir, data_manager)
                 if compile_error2:
+                    import ipdb;ipdb.set_trace()
                     retry_count = max_retries
                     logger.info(f"Compilation failed for compiling all_files processed_all_files.rs, retrying...")
                     continue
@@ -627,6 +638,7 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
 
     parallel_groups = get_parallel_groups(test_names, data_manager,sorted_funcs_depth,funcs_childs)
 
+
     # 并行处理每个 test_source_name
     for group in parallel_groups:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
@@ -662,8 +674,6 @@ async def main():
     # llm_model = "zhipu"
     # llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
-    logger = logger_init(os.path.join(output_dir,'app.log'))
 
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
@@ -674,6 +684,20 @@ async def main():
     source_path = test_path
     source_path.extend(src_path)
 
+    has_test = (cfg['Paths'].get('test_dir','') != '')
+    if not has_test:
+        for test_name in test_names:
+            include_dict[test_name]=src_names
+    
+
+    sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
+    logger = logger_init(os.path.join(output_dir,'app.log'))
+
+    if not has_test:
+        for test_name in test_names:
+            include_dict[test_name]=src_names
+
+    import ipdb; ipdb.set_trace()
     # source_path = [
     #     os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
     #     os.path.join(tmp_dir,'src_json/tinyexpr.json'),
@@ -716,7 +740,7 @@ async def main():
         with open(f, 'r') as file:
             data.append(json.load(file))
 
-    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer)   
+    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test)   
 
 
     results = {}

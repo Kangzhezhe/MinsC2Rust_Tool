@@ -399,7 +399,7 @@ def analyze_function_calls(funcs_childs):
     return result
 
     
-def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None):
+def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None,has_test=True):
     if len(sys.argv) < 2:
         print('usage: ' + sys.argv[0] +
               '[extra clang args...]')
@@ -414,7 +414,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
     with open('../func_result/new_src_processed.json', 'r') as json_file:
         data_src = json.load(json_file)[0]
-
 
     
     def get_all_funcs(source_name, include_dirs, data_src, all_funcs):
@@ -494,6 +493,30 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             flattened_funcs_child[func_name] = children
             flattened_funcs_child_without_fn_pointer[func_name] = [child for child in children if child not in all_pointer_funcs]
 
+
+    if not has_test:
+        for file, funcs in data_src.items():
+            # 获取当前文件的依赖列表
+            current_deps = set(include_dirs.get(file, []))
+
+            # 遍历文件中的每个函数
+            for func in funcs:
+                # 获取该函数的子函数列表
+                child_funcs = flattened_funcs_child.get(func, [])
+
+                # 遍历子函数，找到子函数所在的文件
+                for child_func in child_funcs:
+                    # 找到子函数所在的文件
+                    for other_file, other_funcs in data_src.items():
+                        if child_func in other_funcs and other_file not in current_deps and other_file != file:
+                            current_deps.add(other_file)
+
+            # 更新 include_dirs 的依赖列表
+            include_dirs[file] = list(current_deps)
+
+
+
+
     all_data = data.copy() 
     all_data.update(data_src)
     include_dirs_without_fn_pointer = copy.deepcopy(include_dirs)
@@ -514,6 +537,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                 excluded_childs.add(child)
             if set(all_funcs).isdisjoint(set(all_childs_without_fn_pointer)):
                 excluded_childs_without_fn_pointer.add(child)
+
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
         include_dirs_without_fn_pointer[file] = [child for child in file_childs if child not in excluded_childs_without_fn_pointer]
                

@@ -68,6 +68,8 @@ def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
     for file in all_files:
         all_child_files = [file]
         data_manager.get_all_source(file, all_child_files)
+        if not data_manager.has_test:
+            all_child_files = all_files
 
         all_function_lines = '\n'.join(
             value
@@ -87,6 +89,8 @@ def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
 
         with open(os.path.join(tmp_dir, 'test_source.rs'), 'w') as f:
             f.write(output_content)
+
+        
         compile_error2 = run_command(f'rustc -Awarnings {os.path.join(tmp_dir, 'test_source.rs')}')
 
         delete_file_if_exists('test_source')

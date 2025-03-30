@@ -3,7 +3,8 @@ import json
 import re
 
 class DataManager:
-    def __init__(self, source_path,include_dict,all_pointer_funcs,include_dict_without_fn_pointer):
+    def __init__(self, source_path,include_dict,all_pointer_funcs,include_dict_without_fn_pointer,has_test=True):
+        self.has_test = has_test
         self.data = []
         self.path_index_dict = {}
         self.source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]

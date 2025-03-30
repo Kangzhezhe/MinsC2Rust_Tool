@@ -1,3 +1,4 @@
+import json
 from clang_callgraph import get_c_functions_name
 from AST_test import content_extract
 import sys,os
@@ -53,11 +54,29 @@ if __name__ == "__main__":
                         os.path.join(tmp_dir,"test_json"))   # 函数分割保存
 
     else:
-        shutil.copy(os.path.join(func_result_dir, 'new_src_processed.json'), 
-            os.path.join(func_result_dir, 'new_test_processed.json'))
+        with open(os.path.join(func_result_dir,'new_src_processed.json'), 'r') as json_file:
+            data_src = json.load(json_file)[0]
+
+        contains_main = {key: value for key, value in data_src.items() if 'main' in value}
+        not_contains_main = {key: value for key, value in data_src.items() if 'main' not in value}
+
+        with open(os.path.join(func_result_dir,'new_src_processed.json'), 'w') as json_file:
+            json.dump([not_contains_main], json_file, indent=4)
+
+        with open(os.path.join(func_result_dir,'new_test_processed.json'), 'w') as json_file:
+            json.dump([contains_main], json_file, indent=4)
+
+
+        if os.path.exists(os.path.join(tmp_dir, 'src_json')):
+            shutil.rmtree(os.path.join(tmp_dir, 'src_json'))  # 删除目标目录
 
         if os.path.exists(os.path.join(tmp_dir, 'test_json')):
             shutil.rmtree(os.path.join(tmp_dir, 'test_json'))  # 删除目标目录
 
-        shutil.copytree(os.path.join(tmp_dir, 'src_json'), 
-                    os.path.join(tmp_dir, 'test_json'))
+        content_extract(os.path.join(func_result_dir,'new_src_processed.json'), # 函数名称
+                    os.path.join(tmp_dir,"src"), # 函数内容
+                    os.path.join(tmp_dir,"src_json"))   # 函数分割保存
+        
+        content_extract(os.path.join(func_result_dir,'new_test_processed.json'), # 函数名称
+                    os.path.join(tmp_dir,"src"), # 函数内容
+                    os.path.join(tmp_dir,"test_json"))   # 函数分割保存
