@@ -427,7 +427,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         get_all_funcs(source_name, include_dirs, data_src, all_funcs)
         return func in all_funcs
 
-        
     result_funcs_depth = {}
     result_funcs_child = {}
     all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
@@ -440,7 +439,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             for match in matchs:
                 if funcs_depth.get(match) is None:
                     funcs_depth[match] = 0
-                    print_callgraph(match)
+                    # print_callgraph(match)
                     get_func_depth(match, list(),  funcs_depth = funcs_depth)
 
         if source_name == 'test-utf8-decoder':

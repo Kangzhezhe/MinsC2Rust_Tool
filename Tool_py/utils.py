@@ -9,6 +9,7 @@ from extract_rust_func import extract_rust
 import shutil
 
 import signal
+import ast
 
 def find_elements(list1, list2):
     """
@@ -30,11 +31,12 @@ def extract_related_items(source_str, target_str,names_list,not_found = False,ex
 
     参数:
         source_str (str): 包含关键字的源字符串。
-        target_str (str): 需要匹配关键字的目标字符串。
+        target_str (str): 需要匹配关键字的目标字典
 
     返回:
         list: 包含所有相关子串的列表（去重）。
     """
+    converted_dict = ast.literal_eval(target_str)
 
     not_found_keywords = ['not found', 'in this scope', 'not bound', 'cannot find', 'undeclared', 'undefined','error[E0425]','error[E0408]']
     
@@ -54,10 +56,10 @@ def extract_related_items(source_str, target_str,names_list,not_found = False,ex
         # 在 target_str 中查找包含这些关键字的所有子串
         related_items = set()
         for keyword in filtered_keywords:
-            matches = re.findall(rf"'[^']*\b{keyword}\b[^']*'", target_str)
-            related_items.update(matches)
+            # matches = re.findall(rf"'[^']*\b{keyword}\b[^']*'", target_str)
+            related_items.add(converted_dict.get(keyword, ''))
 
-        return "".join(related_items)
+        return "\n".join(related_items)
 
     else:    
         return ""

@@ -135,6 +135,7 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
                             file.writelines(file_lines[start_line-1:end_line])
                             all_function_lines.update(range(start_line, end_line + 1))
 
+
                 # 将结果读取成json格式
                 with open(output_filename, 'r', encoding='utf-8') as file:
                     content = file.read()
@@ -154,8 +155,7 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
             # 将函数外的内容保存到extra字段
             result["extra"] = ''.join(extra_content)
             details = extract_info_from_c_file(filename)
-            result["extra"] = f"details: [{details}], extract_info: [{result['extra']}]"
-
+            result["extra"] = f"{details} extract_info: [{result['extra']}]"
             # 使用 json.dump 将数据写入文件
             os.makedirs(save_json_path, exist_ok=True)
             output_file = f'{save_json_path}/{file_name}.json'

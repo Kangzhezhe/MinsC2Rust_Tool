@@ -68,22 +68,21 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     child_funs_c_list = child_funs_c.strip(',').split(',')
     names_list,before_details = data_manager.get_details(child_funs_c_list)
     before_details1 = extract_related_items(source_context,before_details,names_list,not_found=True,exlude_str=child_context)
-    before_details = extract_related_items(before_details1,before_details,names_list,not_found=True,exlude_str=child_context)
-    debug(f"before_details: {before_details}")
+    target_str = extract_related_items(before_details1,before_details,names_list,not_found=True,exlude_str=child_context)
+    debug(f"before_details: {target_str}")
 
     child_funs_list = child_funs.strip(',').split(',')
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
     
 
-    
-    child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(before_details)-len(source_context))
+    child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(target_str)-len(source_context))
     child_funs_prompt_list = child_funs_prompt_list.strip(',').split(',')
 
     if params['enable_english_prompt']:
-        prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context_prompt, before_details,source_context)
+        prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context_prompt, target_str,source_context)
     else:
-        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context_prompt, before_details,source_context,pointer_functions)
+        prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context_prompt, target_str,source_context,pointer_functions)
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
     logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')

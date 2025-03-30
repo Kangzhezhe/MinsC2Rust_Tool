@@ -9,6 +9,16 @@ from parse_config import read_config
 from merge_c_h import process_files
 import shutil
 
+def clear_directory(directory_path):
+    """清空指定目录的内容，但保留目录本身。"""
+    if os.path.exists(directory_path):
+        for item in os.listdir(directory_path):
+            item_path = os.path.join(directory_path, item)
+            if os.path.isfile(item_path) or os.path.islink(item_path):
+                os.unlink(item_path)  # 删除文件或符号链接
+            elif os.path.isdir(item_path):
+                shutil.rmtree(item_path)  # 删除子目录
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python makejson.py <config_path>")
@@ -67,11 +77,9 @@ if __name__ == "__main__":
             json.dump([contains_main], json_file, indent=4)
 
 
-        if os.path.exists(os.path.join(tmp_dir, 'src_json')):
-            shutil.rmtree(os.path.join(tmp_dir, 'src_json'))  # 删除目标目录
+        clear_directory(os.path.join(tmp_dir, 'src_json'))
+        clear_directory(os.path.join(tmp_dir, 'test_json'))
 
-        if os.path.exists(os.path.join(tmp_dir, 'test_json')):
-            shutil.rmtree(os.path.join(tmp_dir, 'test_json'))  # 删除目标目录
 
         content_extract(os.path.join(func_result_dir,'new_src_processed.json'), # 函数名称
                     os.path.join(tmp_dir,"src"), # 函数内容

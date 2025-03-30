@@ -24,7 +24,8 @@ def find_matching_brace(content, start_pos):
     return -1
 
 def find_struct(content, pattern):
-    match = re.search(re.escape(pattern), content)
+    regex = pattern + r'\s*{'
+    match = re.search(regex, content)
     if match:
         start_pos = match.end() - 1
         end_pos = find_matching_brace(content, start_pos)
@@ -35,12 +36,11 @@ def find_struct(content, pattern):
 
 
 def parse_ctags_json(filename, c_file):
-    structs = set()
-    globals = set()
-    macros = set()
-    typedefs = set()
-    enums = set()
-    variable_names = set()
+    structs = {}
+    globals = {}
+    macros = {}
+    typedefs = {}
+    enums = {}
 
     with open(c_file, 'r') as f:
         content = f.read()
@@ -51,45 +51,47 @@ def parse_ctags_json(filename, c_file):
             if 'kind' not in tag:
                 continue
             pattern = tag.get('pattern', '').strip('/^$/')
-            if tag['kind']  in ['struct', 'variable', 'macro', 'typedef', 'enum']:
-                variable_names.add(tag.get('name', ''))
-
+            variable_name = tag.get('name', '')
+            
             if tag['kind'] == 'struct':
                 struct_def = find_struct(content,pattern)
                 if struct_def:
-                    structs.add(struct_def)
+                    structs[variable_name] = struct_def
             elif tag['kind'] == 'variable':
                 if pattern.endswith(';'):
-                    globals.add(pattern)
+                    globals[variable_name] = pattern
                 else:
                     match = re.search(re.escape(pattern) + r'[^;]*;', content)
                     if match:
-                        globals.add(match.group(0))
+                        globals[variable_name] = match.group(0)
             elif tag['kind'] == 'macro':
                 match = re.search(re.escape(pattern) + r'.*', content)
                 if match:
-                    macros.add(match.group(0))
+                    macros[variable_name] = match.group(0)
             elif tag['kind'] == 'typedef':
                 if pattern.endswith(';'):
-                    typedefs.add(pattern)
+                    typedefs[variable_name] = pattern
                 else:
                     match = re.search(re.escape(pattern) + r'[^;]*;', content)
                     if match:
-                        typedefs.add(match.group(0))
+                        typedefs[variable_name] = match.group(0)
             elif tag['kind'] == 'enum':
                     matches = re.findall(re.escape(pattern) + r'[^;]*;', content)
                     for match in matches:
-                        enums.add(match)
+                        enums[variable_name] = match
 
-    return list(structs), list(globals), list(macros), list(typedefs),list(enums), list(variable_names)
+    return structs, globals, macros, typedefs, enums
 
 def extract_info_from_c_file(c_file):
     tags_file = 'tags.json'
+    
     generate_ctags(c_file, tags_file)
-    structs, globals, macros, typedefs,enums ,variable_names= parse_ctags_json(tags_file, c_file)
+    structs, globals, macros, typedefs,enums = parse_ctags_json(tags_file, c_file)
+
     if os.path.exists(tags_file):
         os.remove(tags_file)
-    return f"Names: {variable_names}\n\nStructs: {structs}\n\nGlobals: {globals}\n\nMacros: {macros}\n\nTypedefs: {typedefs}\n\nEnums: {enums} \n\n"
+
+    return str({**structs, **globals, **macros, **typedefs, **enums})
     # return f"Names: {variable_names}\n\nGlobals: {globals}\n\nMacros: {macros}\n\nEnums: {enums} \n\n"
 
 if __name__ == '__main__':
