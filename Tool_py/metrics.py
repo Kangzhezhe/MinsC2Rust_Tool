@@ -269,3 +269,90 @@ def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_
 
 
     return overall_pass_rate
+
+
+def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manager):
+    """
+    计算每个源文件的代码行数（LOC）、总代码行数（Total LOC）和行覆盖率（LCov），并打印和保存为 CSV 文件。
+
+    参数:
+        output_dir (str): 输出目录。
+        results (dict): 包含每个源文件及其函数的结果数据。
+        sorted_funcs_depth (dict): 按深度排序的函数依赖关系。
+        data_manager (object): 数据管理器，用于获取函数内容和包含关系。
+
+    返回:
+        float: 总体代码行数的统计结果。
+    """
+    detailed_data = []  # 用于存储详细数据行
+    total_loc_all = 0
+    loc_all = 0
+
+    for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
+        if test_source_name not in results:
+            continue
+
+        # 获取包含关系索引（如果需要）
+        data_manager.get_include_indices(test_source_name)
+
+        total_loc = 0
+        loc = 0
+
+        for func in funcs:
+            if func in results[test_source_name]:
+                # 计算当前函数的 LOC
+                loc += len(results[test_source_name][func].split('\n'))
+                
+                # 获取函数的完整内容并计算 Total LOC
+                func_content, _, _ = data_manager.get_content(func)
+                total_loc += len(func_content.split('\n'))
+
+        # 累计总 LOC 和总代码行数
+        total_loc_all += total_loc
+        loc_all += loc
+
+        # 计算行覆盖率（LCov）
+        lcov = loc / total_loc if total_loc > 0 else 0
+
+        # 添加详细信息到数据列表
+        detailed_data.append({
+            'Source': test_source_name,
+            'LOC': loc,
+            'Total LOC': total_loc,
+            'LCov': lcov
+        })
+
+    # 添加总体统计
+    overall_lcov = loc_all / total_loc_all if total_loc_all > 0 else 0
+    detailed_data.append({
+        'Source': 'Overall',
+        'LOC': loc_all,
+        'Total LOC': total_loc_all,
+        'LCov': overall_lcov
+    })
+
+    # 打印统计信息
+    print("代码行数统计已保存到 loc_statistics.csv 文件")
+    print("\nLOC Statistics:")
+    for row in detailed_data:
+        print(f"{row['Source']}: LOC = {row['LOC']}, Total LOC = {row['Total LOC']}, LCov = {row['LCov']:.2%}")
+
+    # 保存到 CSV 文件
+    os.makedirs(output_dir, exist_ok=True)
+    csv_path = os.path.join(output_dir, 'loc_statistics.csv')
+    with open(csv_path, 'w', newline='') as csvfile:
+        fieldnames = ['Source', 'LOC', 'Total LOC', 'LCov']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for row in detailed_data:
+            writer.writerow({
+                'Source': row['Source'],
+                'LOC': row['LOC'],
+                'Total LOC': row['Total LOC'],
+                'LCov': f"{row['LCov']:.2%}"
+            })
+
+    print(f"\n统计结果已保存到: {csv_path}")
+
+    return total_loc_all

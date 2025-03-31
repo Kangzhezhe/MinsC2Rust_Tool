@@ -5,10 +5,12 @@ import re
 from collections import defaultdict
 import subprocess
 import sys
+
+from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from parse_config import read_config, setup_project_directories
 from models.llm_model import generate_response
-from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count
+from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count,calculate_loc_statistics
 from merge_c_h import process_files
 from utils import deduplicate_code, run_command, update_test_timeout,parse_and_deduplicate_errors,Memory
 from prompts import generate_extra_prompt,fix_extra_prompt, get_json_parsing_fix_prompt
@@ -108,8 +110,9 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
             once_retry_count_dict = json.load(f)
     calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_manager)
     calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
-
+    calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manager)
     
+    import ipdb; ipdb.set_trace()
 
     # 工程结构重构
     if not eval_only:
@@ -448,10 +451,8 @@ if __name__ == "__main__":
     tmp_dir, output_dir, output_project_path,compile_commands_path,params,excluded_files= setup_project_directories(cfg)
 
     llm_model = "qwen"
-    include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-    sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths)
-    logger = logger_init(os.path.join(output_dir,'app.log'))
 
+    include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
     test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
@@ -460,6 +461,19 @@ if __name__ == "__main__":
     src_names = [os.path.splitext(os.path.basename(f))[0] for f in src_path]
     source_path = test_path
     source_path.extend(src_path)
+
+    has_test = (cfg['Paths'].get('test_dir','') != '')
+    if not has_test:
+        for test_name in test_names:
+            include_dict[test_name]=src_names
+
+    sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
+    logger = logger_init(os.path.join(output_dir,'app.log'))
+
+
+    if not has_test:
+        for test_name in test_names:
+            include_dict[test_name]=src_names
 
     # source_path = [
     #     os.path.join(tmp_dir,'src_json/compare-int.json'),
@@ -493,6 +507,6 @@ if __name__ == "__main__":
         with open(f, 'r') as file:
             data.append(json.load(file))
     
-    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer) 
+    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test) 
 
     post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only,test_timeout=params.get('test_timeout',60000))
