@@ -285,7 +285,10 @@ def get_c_functions_name(c_path, unprocess_path,compile_commands_path):
     cfg['db'] = compile_commands_path
     load_config_file(cfg)
     analyze_source_files(cfg)
-    filepaths =  get_c_filepaths(c_path)
+    if c_path != '':
+        filepaths =  get_c_filepaths(c_path)
+    else:
+        filepaths =  {f['file'] for f in read_compile_commands(cfg['db']) }
     results = []
     for file in filepaths:
         functions_list = list(FILE_FUNCTIONS[file])
@@ -419,6 +422,11 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     def get_all_funcs(source_name, include_dirs, data_src, all_funcs):
         child_source = include_dirs.get(source_name, [])
         for source in child_source:
+            # 如果 data_src[source] 的所有元素都已经在 all_funcs 中，则跳过
+            if all(func in all_funcs for func in data_src.get(source, [])):
+                continue
+            
+            # 否则，添加新的函数并递归处理
             all_funcs += data_src.get(source, [])
             get_all_funcs(source, include_dirs, data_src, all_funcs)
 
@@ -431,6 +439,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     result_funcs_child = {}
     all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
     dependencies = get_global_function_pointer_dependencies(all_file_paths)
+
     for source_name, value in data.items():
         funcs_depth = {}
         funcs_child = defaultdict(set)

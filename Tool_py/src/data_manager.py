@@ -133,7 +133,11 @@ class DataManager:
                     seen_details.add(detail)
                     before_details += '\n' + detail
 
-        converted_dict = ast.literal_eval(before_details)
+        try:
+            converted_dict = ast.literal_eval(before_details)
+        except (SyntaxError, ValueError):
+            print("Error: Invalid string format for conversion.")
+            converted_dict = {}
 
         return list(converted_dict.keys()), before_details
 

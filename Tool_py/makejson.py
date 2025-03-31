@@ -11,7 +11,9 @@ import shutil
 
 def clear_directory(directory_path):
     """清空指定目录的内容，但保留目录本身。"""
-    if os.path.exists(directory_path):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)  # 如果目录不存在，则创建
+    else: 
         for item in os.listdir(directory_path):
             item_path = os.path.join(directory_path, item)
             if os.path.isfile(item_path) or os.path.islink(item_path):
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     config_path = sys.argv[1]
 
     cfg = read_config(config_path)
-    src_dir = cfg['Paths']['src_dir']
+    src_dir = cfg['Paths'].get('src_dir','')
     test_dir = cfg['Paths'].get('test_dir','')
     func_result_dir = cfg['Paths']['func_result_dir']
     tmp_dir = cfg['Paths']['tmp_dir']
@@ -34,7 +36,6 @@ if __name__ == "__main__":
 
     process_files(compile_commands_path, tmp_dir)
     
-
     # 获取函数名称
     get_c_functions_name(src_dir, # 函数内容
                          os.path.join(func_result_dir,'new_src.json'), # 函数名称保存

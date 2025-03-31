@@ -11,7 +11,7 @@ def read_file(filename):
         return file.readlines()
 
 def merge_files(c_filename, output_filename, include_dirs):
-    include_pattern = re.compile(r'#include\s+"(.+\.h)"')
+    include_pattern = re.compile(r'#\s*include\s+"(.+\.h)"')
     merged_lines = []
     included_files = set()  # 使用集合避免重复包含
 
@@ -58,9 +58,33 @@ def read_compile_commands(filename):
     with open(filename, 'r') as file:
         return json.load(file)
 
+
+def process_compile_commands(compile_commands_path):
+    compile_commands = read_compile_commands(compile_commands_path)
+    for entry in compile_commands:
+        if entry.get('command','') == '' and entry.get('arguments','') != '':
+            directory = entry['directory']
+            updated_arguments = []
+            for arg in entry['arguments']:
+                if arg.startswith('-I'):
+                    include_path = arg[2:]  # 提取 -I 后的路径
+                    if not os.path.isabs(include_path):  # 如果是相对路径
+                        absolute_path = os.path.normpath(os.path.join(directory, include_path))
+                        updated_arguments.append(f'-I{absolute_path}')
+                    else:
+                        updated_arguments.append(arg)
+                else:
+                    updated_arguments.append(arg)
+            entry['arguments'] = updated_arguments
+            entry['command'] = ' '.join(updated_arguments)
+
+    with open(compile_commands_path, 'w') as file:
+        json.dump(compile_commands, file, indent=4)
+    return compile_commands
+
 def process_files(compile_commands_path, output_dir):
     # 读取 compile_commands.json 文件
-    compile_commands = read_compile_commands(compile_commands_path)
+    compile_commands = process_compile_commands(compile_commands_path)
 
     # 存储每个 .c 文件及其包含的 .h 文件的字典
     include_dict = {}
@@ -83,7 +107,8 @@ def process_files(compile_commands_path, output_dir):
         os.makedirs(output_sub_dir, exist_ok=True)
 
         output_filename = os.path.join(output_sub_dir, os.path.basename(c_filename))
-        include_dirs = [arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')]
+
+        include_dirs = {arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')}
 
         # 合并文件内容并保存到输出文件
         

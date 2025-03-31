@@ -36,7 +36,11 @@ def extract_related_items(source_str, target_str,names_list,not_found = False,ex
     返回:
         list: 包含所有相关子串的列表（去重）。
     """
-    converted_dict = ast.literal_eval(target_str)
+    try:
+        converted_dict = ast.literal_eval(target_str)
+    except (SyntaxError, ValueError):
+        print("Error: Invalid string format for conversion.")
+        converted_dict = {}
 
     not_found_keywords = ['not found', 'in this scope', 'not bound', 'cannot find', 'undeclared', 'undefined','error[E0425]','error[E0408]']
     

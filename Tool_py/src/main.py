@@ -413,7 +413,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 compile_error2 =  compile_all_files(data_manager.all_include_files, results_copy, tmp_dir, data_manager)
                 if compile_error2:
-                    import ipdb;ipdb.set_trace()
                     retry_count = max_retries
                     logger.info(f"Compilation failed for compiling all_files processed_all_files.rs, retrying...")
                     continue
@@ -673,7 +672,6 @@ async def main():
     # llm_model = "zhipu"
     # llm_model = "deepseek"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
-
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
     test_names = [os.path.splitext(os.path.basename(f))[0] for f in test_path]
@@ -687,16 +685,18 @@ async def main():
     if not has_test:
         for test_name in test_names:
             include_dict[test_name]=src_names
-    
 
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
     logger = logger_init(os.path.join(output_dir,'app.log'))
+
+    import ipdb; ipdb.set_trace()
 
     if not has_test:
         for test_name in test_names:
             include_dict[test_name]=src_names
 
-    import ipdb; ipdb.set_trace()
+    
+
     # source_path = [
     #     os.path.join(tmp_dir,'test_json/test-tinyexpr.json'),
     #     os.path.join(tmp_dir,'src_json/tinyexpr.json'),
@@ -741,7 +741,6 @@ async def main():
 
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test)   
 
-
     results = {}
     start_time = time.time()
     total_retry_count = 0
@@ -751,6 +750,7 @@ async def main():
     all_error_funcs_content = defaultdict(dict) 
     once_retry_count_dict = defaultdict(dict)
     results = defaultdict(dict)
+
 
     results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
 

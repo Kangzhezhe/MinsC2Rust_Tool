@@ -252,5 +252,4 @@ def get_global_function_pointer_dependencies(filenames):
     return dependencies
 
 if __name__ == "__main__":
-    dependencies = get_global_function_pointer_dependencies(['/home/mins01/Test_qwen/tmp/test/test-sortedarray.c'])
-    print(json.dumps(dependencies, indent=4))
+    dependencies = parse_c_file("/home/mins01/exp/libtool/Output/tmp/src/ltdl.c")

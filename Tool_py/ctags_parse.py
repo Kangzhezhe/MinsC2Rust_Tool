@@ -91,7 +91,7 @@ def extract_info_from_c_file(c_file):
     if os.path.exists(tags_file):
         os.remove(tags_file)
 
-    return str({**structs, **globals, **macros, **typedefs, **enums})
+    return repr({**structs, **globals, **macros, **typedefs, **enums}).encode("ascii", "ignore").decode("ascii")
     # return f"Names: {variable_names}\n\nGlobals: {globals}\n\nMacros: {macros}\n\nEnums: {enums} \n\n"
 
 if __name__ == '__main__':

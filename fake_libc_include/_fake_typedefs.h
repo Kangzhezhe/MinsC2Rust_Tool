@@ -219,4 +219,6 @@ typedef enum memory_order {
   memory_order_seq_cst
 } memory_order;
 
+typedef int error_t;
+
 #endif
