@@ -122,6 +122,7 @@ class DataManager:
     def get_details(self, func_names):
         before_details = ''
         seen_details = set()
+        converted_dict = {}
         for func_name in func_names:
             _, _, i = self.get_content(func_name)
             jsonfile = self.data[i]
@@ -131,13 +132,15 @@ class DataManager:
                 detail = source_extra[:details_index]
                 if detail not in seen_details:
                     seen_details.add(detail)
-                    before_details += '\n' + detail
+                    converted = ast.literal_eval(detail)
+                    converted_dict.update(converted)
 
-        try:
-            converted_dict = ast.literal_eval(before_details)
-        except (SyntaxError, ValueError):
-            print("Error: Invalid string format for conversion.")
-            converted_dict = {}
+        before_details = repr(converted_dict)
+        # try:
+        #     converted_dict = ast.literal_eval(before_details)
+        # except (SyntaxError, ValueError):
+        #     print("Error: Invalid string format for conversion.")
+        #     converted_dict = {}
 
         return list(converted_dict.keys()), before_details
 
