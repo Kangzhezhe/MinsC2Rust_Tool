@@ -198,7 +198,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 for key, value in response_function_content_dict.items():
                     if key in temp_function_content_dict:
-                        if key not in data_manager.all_pointer_funcs or key == func_name:
+                        if key not in data_manager.all_pointer_funcs or key in func_name:
                             temp_function_content_dict[key] = value
                         elif remove_comments_and_whitespace(data_manager.get_result(key,results)) != remove_comments_and_whitespace(value):
                             logger.info(f"Function Pointer {key} has been modified ...")
@@ -209,11 +209,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 temp_non_function_content = response_non_function_content
                 template = get_output_content(temp_non_function_content, temp_function_content_dict)
 
-                func_not_found = False
-                for f in child_funs_c_list:
-                    if f not in temp_function_content_dict:
-                        func_not_found = True
-                if func_not_found or 'main' not in temp_function_content_dict:
+                if  func_name not in temp_function_content_dict or 'main' not in temp_function_content_dict:
                     retry_count = max_retries
                     continue
                 
@@ -366,10 +362,16 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                         response = generate_response(prompt1,llm_model,0)
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
-                        if not response:
-                            continue
                         try:
-                            first_brace_index = re.search(r'{', response).start()
+                            match = re.search(r'{', response)
+                            if match:
+                                first_brace_index = match.start()
+                            else:
+                                retry+=1
+                                if retry>=max_json_insert_retries:
+                                    logger.info("Failed to parse JSON response, skipping...")
+                                    break
+                                continue
                             json_substr = response[first_brace_index:]
                             response_json = json.loads(json_substr)
                             for key, value in response_json.items():

@@ -1,3 +1,50 @@
 [
-    {}
+    {
+        "preopen": [
+            "vm_sym",
+            "vl_init",
+            "preopen_LTX_get_vtable",
+            "free_symlists",
+            "lt_dlpreload",
+            "lt_dlpreload_default",
+            "vl_exit",
+            "add_symlist",
+            "lt_dlpreload_open",
+            "vm_close",
+            "vm_open"
+        ],
+        "lt__alloc": [
+            "lt__zalloc",
+            "lt__strdup",
+            "lt__memdup",
+            "lt__malloc",
+            "lt__realloc",
+            "alloc_die_default"
+        ],
+        "slist": [
+            "slist_sort_merge"
+        ],
+        "lt_dlloader": [
+            "loader_callback",
+            "lt_dlloader_next",
+            "lt_dlloader_find",
+            "lt_dlloader_add",
+            "lt_dlloader_get",
+            "lt_dlloader_remove"
+        ],
+        "lt_error": [
+            "lt__error_string",
+            "lt_dlseterror",
+            "lt__set_last_error",
+            "lt_dladderror",
+            "lt__get_last_error"
+        ],
+        "dlopen": [
+            "vm_sym",
+            "vl_exit",
+            "get_vtable",
+            "vm_close",
+            "vm_open"
+        ]
+    }
 ]
