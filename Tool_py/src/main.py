@@ -691,8 +691,6 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
-    import ipdb; ipdb.set_trace()
-
     if not has_test:
         for test_name in test_names:
             include_dict[test_name]=src_names
