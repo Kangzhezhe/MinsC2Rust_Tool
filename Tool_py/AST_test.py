@@ -252,4 +252,4 @@ def get_global_function_pointer_dependencies(filenames):
     return dependencies
 
 if __name__ == "__main__":
-    dependencies = parse_c_file("/home/mins01/exp/libtool/Output/tmp/src/ltdl.c")
+    dependencies = parse_c_file("/home/mins01/exp/time/Output/tmp/src/version-etc.c")

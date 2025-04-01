@@ -1,135 +1,67 @@
 [
     {
-        "preopen.c": [
-            "vm_sym(lt_user_data, lt_module, const char *)",
-            "vl_init(lt_user_data)",
-            "preopen_LTX_get_vtable(lt_user_data)",
-            "free_symlists()",
-            "lt_dlpreload(const lt_dlsymlist *)",
-            "lt_dlpreload_default(const lt_dlsymlist *)",
-            "vl_exit(lt_user_data)",
-            "add_symlist(const lt_dlsymlist *)",
-            "lt_dlpreload_open(const char *, lt_dlpreload_callback_func *)",
-            "vm_close(lt_user_data, lt_module)",
-            "vm_open(lt_user_data, const char *, lt_dladvise)"
+        "progname.c": [
+            "set_program_name(const char *)"
         ]
     },
     {
-        "lt__alloc.c": [
-            "lt__zalloc(size_t)",
-            "lt__strdup(const char *)",
-            "lt__memdup(const void *, size_t)",
-            "lt__malloc(size_t)",
-            "lt__realloc(void *, size_t)",
-            "alloc_die_default()"
+        "resuse.c": [
+            "resuse_end(pid_t, RESUSE *)",
+            "resuse_start(RESUSE *)"
         ]
     },
     {
-        "ltdl.c": [
-            "argzize_path(const char *, char **, size_t *)",
-            "parse_dotla_file(FILE *, char **, char **, char **, char **, int *)",
-            "loader_init_callback(lt_dlhandle)",
-            "lt_dladvise_resident(lt_dladvise *)",
-            "lt_dlinterface_free(lt_dlinterface_id)",
-            "lt_dlcaller_get_data(lt_dlinterface_id, lt_dlhandle)",
-            "lt_argz_insert(char **, size_t *, char *, const char *)",
-            "lt_dlgetsearchpath()",
-            "lt_dladvise_init(lt_dladvise *)",
-            "lt_dlhandle_map(lt_dlinterface_id, int (*)(lt_dlhandle, void *), void *)",
-            "find_file(const char *, const char *, char **)",
-            "lt__alloc_die_callback()",
-            "lt_dlclose(lt_dlhandle)",
-            "lt_dlhandle_fetch(lt_dlinterface_id, const char *)",
-            "find_file_callback(char *, void *, void *)",
-            "lt_dladdsearchdir(const char *)",
-            "preopen_LTX_get_vtable(lt_user_data)",
-            "lt_dlopenadvise(const char *, lt_dladvise)",
-            "main()",
-            "lt_dlopen(const char *)",
-            "trim(char **, const char *)",
-            "lt_dlpath_insertdir(char **, char *, const char *)",
-            "list_files_by_dir(const char *, char **, size_t *)",
-            "lt_dlcaller_set_data(lt_dlinterface_id, lt_dlhandle, void *)",
-            "find_handle_callback(char *, void *, void *)",
-            "lt_argz_insertdir(char **, size_t *, const char *, struct dirent *)",
-            "lt_dlsym(lt_dlhandle, const char *)",
-            "foreachfile_callback(char *, void *, void *)",
-            "lt_dlinsertsearchdir(const char *, const char *)",
-            "lt_dlexit()",
-            "lt_dladvise_local(lt_dladvise *)",
-            "lt_dlsetsearchpath(const char *)",
-            "lt_dlgetinfo(lt_dlhandle)",
-            "foreach_dirinpath(const char *, const char *, foreach_callback_func *, void *, void *)",
-            "tryall_dlopen(lt_dlhandle *, const char *, lt_dladvise, const lt_dlvtable *)",
-            "lt_dladvise_preload(lt_dladvise *)",
-            "lt_dlinterface_register(const char *, lt_dlhandle_interface *)",
-            "find_handle(const char *, const char *, lt_dlhandle *, lt_dladvise)",
-            "loader_init(lt_get_vtable *, lt_user_data)",
-            "lt_dladvise_ext(lt_dladvise *)",
-            "load_deplibs(lt_dlhandle, char *)",
-            "lt_dlforeachfile(const char *, int (*)(const char *, void *), void *)",
-            "file_not_found()",
-            "lt_dlopenext(const char *)",
-            "find_module(lt_dlhandle *, const char *, const char *, const char *, const char *, int, lt_dladvise)",
-            "lt_dlerror()",
-            "has_library_ext(const char *)",
-            "lt_dlmakeresident(lt_dlhandle)",
-            "lt_dlhandle_iterate(lt_dlinterface_id, lt_dlhandle)",
-            "lt_dladvise_global(lt_dladvise *)",
-            "lt_dlisresident(lt_dlhandle)",
-            "tryall_dlopen_module(lt_dlhandle *, const char *, const char *, const char *, lt_dladvise)",
-            "lt_dladvise_destroy(lt_dladvise *)",
-            "canonicalize_path(const char *, char **)",
-            "lt_dlinit()",
-            "unload_deplibs(lt_dlhandle)",
-            "lt_argz_insertinorder(char **, size_t *, const char *)",
-            "try_dlopen(lt_dlhandle *, const char *, const char *, lt_dladvise)"
+        "time.c": [
+            "run_command(char *const *, RESUSE *)",
+            "fprintargv(FILE *, const char *const *, const char *)",
+            "main(int, char **)",
+            "linear_argv(const char *const *)",
+            "getargs(int, char **)",
+            "summarize(FILE *, const char *, const char **, RESUSE *)",
+            "usage(int)"
         ]
     },
     {
-        "slist.c": [
-            "lt__slist_tail(SList *)",
-            "lt__slist_concat(SList *, SList *)",
-            "lt__slist_nth(SList *, size_t)",
-            "lt__slist_find(SList *, SListCallback *, void *)",
-            "lt__slist_length(SList *)",
-            "lt__slist_reverse(SList *)",
-            "lt__slist_box(const void *)",
-            "lt__slist_unbox(SList *)",
-            "lt__slist_foreach(SList *, SListCallback *, void *)",
-            "slist_sort_merge(SList *, SList *, SListCompare *, void *)",
-            "lt__slist_remove(SList **, SListCallback *, void *)",
-            "lt__slist_cons(SList *, SList *)",
-            "lt__slist_delete(SList *, void (*)(void *))",
-            "lt__slist_sort(SList *, SListCompare *, void *)"
+        "unistd.c": []
+    },
+    {
+        "getprogname.c": [
+            "getprogname()"
         ]
     },
     {
-        "lt_dlloader.c": [
-            "loader_callback(SList *, void *)",
-            "lt_dlloader_next(lt_dlloader)",
-            "lt_dlloader_find(const char *)",
-            "lt_dlloader_add(const lt_dlvtable *)",
-            "lt_dlloader_get(lt_dlloader)",
-            "lt_dlloader_remove(const char *)"
+        "stripslash.c": [
+            "strip_trailing_slashes(char *)"
         ]
     },
     {
-        "lt_error.c": [
-            "lt__error_string(int)",
-            "lt_dlseterror(int)",
-            "lt__set_last_error(const char *)",
-            "lt_dladderror(const char *)",
-            "lt__get_last_error()"
+        "version-etc-fsf.c": []
+    },
+    {
+        "version-etc.c": [
+            "version_etc(FILE *, const char *, const char *, const char *, ...)",
+            "version_etc_ar(FILE *, const char *, const char *, const char *, const char *const *)",
+            "version_etc_va(FILE *, const char *, const char *, const char *, struct __va_list_tag *)",
+            "emit_bug_reporting_address()",
+            "version_etc_arn(FILE *, const char *, const char *, const char *, const char *const *, size_t)"
         ]
     },
     {
-        "dlopen.c": [
-            "vm_sym(lt_user_data, lt_module, const char *)",
-            "vl_exit(lt_user_data)",
-            "get_vtable(lt_user_data)",
-            "vm_close(lt_user_data, lt_module)",
-            "vm_open(lt_user_data, const char *, lt_dladvise)"
+        "localtime-buffer.c": []
+    },
+    {
+        "rusage-kb.c": []
+    },
+    {
+        "dirname-lgpl.c": [
+            "mdir_name(const char *)",
+            "dir_len(const char *)"
+        ]
+    },
+    {
+        "basename-lgpl.c": [
+            "base_len(const char *)",
+            "last_component(const char *)"
         ]
     }
 ]

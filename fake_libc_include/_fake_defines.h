@@ -259,4 +259,13 @@
 #define __alignas_is_defined 1
 #define __alignof_is_defined 1
 
+
+#ifndef __attribute__
+# define __attribute__(x) // 如果编译器不支持 __attribute__，将其定义为空
+#endif
+
+#ifndef __inline
+# define __inline inline // 如果编译器不支持 __inline，使用 inline 替代
+#endif
+
 #endif

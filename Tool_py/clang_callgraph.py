@@ -11,6 +11,7 @@ import yaml
 import graphviz
 import os
 from AST_test import get_global_function_pointer_dependencies 
+from utils import find_elements
 
 """
 Dumps a callgraph of a function in a codebase
@@ -326,6 +327,7 @@ def extract_function_names(func):
     else:
         return pattern_func.match(func).group(1)
 
+
 def analyze_function_calls(funcs_childs):
     # 将有向有环图转换为有向无环图，并计算深度
     def remove_cycles(graph):
@@ -351,7 +353,15 @@ def analyze_function_calls(funcs_childs):
             return True
 
         for node in graph:
-            visit(node, 0)
+            if node not in visited:
+                visit(node, 0)
+
+        # 确保所有节点都在结果中，即使它们没有子节点
+        for node in graph:
+            if node not in result:
+                result[node] = []
+                depth[node] = 0
+
         return result, depth
 
     # 拓扑排序并返回有序字典
@@ -400,7 +410,6 @@ def analyze_function_calls(funcs_childs):
     result = ensure_ordered_depth(ordered_depth)
 
     return result
-
     
 def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None,has_test=True):
     if len(sys.argv) < 2:
@@ -477,6 +486,9 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
+
+    
+
     
 
     all_pointer_funcs = set()
@@ -500,6 +512,59 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         for func_name, children in funcs.items():
             flattened_funcs_child[func_name] = children
             flattened_funcs_child_without_fn_pointer[func_name] = [child for child in children if child not in all_pointer_funcs]
+    
+    flattened_sorted_funcs_depth = {}
+    for source, funcs in result_funcs_depth.items():
+        for func_name, depth in funcs.items():
+            flattened_sorted_funcs_depth[func_name] = depth
+
+    # for source_name, value in data_src.items():
+        
+    #     union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
+    #     difference = list(set(value)-set(union_list))
+
+    #     if difference == []:
+    #         continue
+
+    #     test_source_name = 'unused_' + source_name
+
+    #     funcs_depth = {}
+    #     funcs_child = defaultdict(set)
+    #     for func in value:
+    #         matchs = func_match(func)
+    #         for match in matchs:
+    #             if funcs_depth.get(match) is None:
+    #                 funcs_depth[match] = 0
+    #                 # print_callgraph(match)
+    #                 get_func_depth(match, list(),  funcs_depth = funcs_depth)
+
+    #     for func, depth in funcs_depth.items():
+    #         if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name,data=data_src):
+    #             funcs_child[func] = set()
+    #             for child in CALLGRAPH[func]:
+    #                 if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name,data=data_src):
+    #                     funcs_child[func].add(pretty_print(child)) 
+        
+    #     funcs_child = {
+    #         extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
+    #         for k, vs in funcs_child.items() if extract_function_names(k)
+    #     }
+
+    #     for func_name, _ in dependencies.items():
+    #         if func_name in funcs_child:
+    #             funcs_child[func_name] = list(set(funcs_child[func_name]).union(dependencies[func_name]))
+
+    #     sorted_funcs_depth = analyze_function_calls(funcs_child)
+    #     sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name,data=data_src)}
+        
+    #     result_funcs_depth[test_source_name] = sorted_funcs_depth
+    #     result_funcs_child[test_source_name] = funcs_child
+
+    #     if test_source_name not in include_dirs:
+    #         include_dirs[test_source_name] = []  # 初始化为一个空列表
+
+    #     if source_name not in include_dirs[test_source_name]:
+    #         include_dirs[test_source_name].append(source_name)
 
 
     if not has_test:

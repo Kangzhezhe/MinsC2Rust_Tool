@@ -4,62 +4,62 @@
     },
     {
         "test-rb-tree.c": [
-            "create_tree()",
-            "test_rb_tree_lookup()",
-            "test_rb_tree_insert_lookup()",
             "test_out_of_memory()",
-            "test_rb_tree_new()",
-            "test_rb_tree_child()",
-            "test_rb_tree_remove()",
-            "validate_tree(RBTree *)",
-            "find_subtree_height(RBTreeNode *)",
             "main(int, char **)",
             "test_rb_tree_free()",
+            "test_rb_tree_insert_lookup()",
+            "find_subtree_height(RBTreeNode *)",
+            "test_rb_tree_child()",
+            "create_tree()",
+            "validate_tree(RBTree *)",
+            "test_rb_tree_remove()",
+            "test_rb_tree_lookup()",
+            "test_rb_tree_new()",
             "test_rb_tree_to_array()"
         ]
     },
     {
         "test-bloom-filter.c": [
             "test_bloom_filter_mismatch()",
-            "test_bloom_filter_insert_query()",
-            "test_bloom_filter_read_load()",
-            "test_bloom_filter_union()",
-            "test_bloom_filter_new_free()",
+            "main(int, char **)",
             "test_bloom_filter_intersection()",
-            "main(int, char **)"
+            "test_bloom_filter_union()",
+            "test_bloom_filter_read_load()",
+            "test_bloom_filter_new_free()",
+            "test_bloom_filter_insert_query()"
         ]
     },
     {
         "test-binomial-heap.c": [
-            "test_binomial_heap_new_free()",
+            "main(int, char **)",
             "verify_heap(BinomialHeap *)",
-            "test_insert_out_of_memory()",
             "test_binomial_heap_insert()",
-            "test_max_heap()",
-            "test_pop_out_of_memory()",
+            "test_insert_out_of_memory()",
             "generate_heap()",
-            "test_min_heap()",
-            "main(int, char **)"
+            "test_max_heap()",
+            "test_binomial_heap_new_free()",
+            "test_pop_out_of_memory()",
+            "test_min_heap()"
         ]
     },
     {
         "test-binary-heap.c": [
-            "test_binary_heap_insert()",
-            "test_binary_heap_new_free()",
-            "test_max_heap()",
             "test_out_of_memory()",
-            "test_min_heap()",
-            "main(int, char **)"
+            "test_binary_heap_new_free()",
+            "main(int, char **)",
+            "test_binary_heap_insert()",
+            "test_max_heap()",
+            "test_min_heap()"
         ]
     },
     {
         "test-alloc-testing.c": [
-            "test_strdup()",
-            "test_realloc()",
-            "test_calloc()",
-            "test_limits()",
+            "main(int, char **)",
             "test_malloc_free()",
-            "main(int, char **)"
+            "test_realloc()",
+            "test_strdup()",
+            "test_limits()",
+            "test_calloc()"
         ]
     },
     {
@@ -70,217 +70,217 @@
     },
     {
         "test-sortedarray.c": [
-            "test_sortedarray_insert()",
-            "free_sorted_ints(SortedArray *)",
-            "test_sortedarray_new_free()",
-            "test_sortedarray_remove_range()",
-            "test_sortedarray_get()",
-            "generate_sortedarray()",
             "generate_sortedarray_equ(SortedArrayEqualFunc)",
+            "test_sortedarray_new_free()",
+            "main(int, char **)",
+            "test_sortedarray_remove_range()",
+            "generate_sortedarray()",
             "ptr_equal(SortedArrayValue, SortedArrayValue)",
             "test_sortedarray_index_of_equ_key()",
+            "test_sortedarray_get()",
             "test_sortedarray_index_of()",
-            "check_sorted_prop(SortedArray *)",
             "test_sortedarray_remove()",
-            "main(int, char **)"
+            "test_sortedarray_insert()",
+            "check_sorted_prop(SortedArray *)",
+            "free_sorted_ints(SortedArray *)"
         ]
     },
     {
         "test-hash-table.c": [
-            "test_hash_table_iterating()",
-            "new_key(int)",
-            "test_hash_table_remove()",
-            "test_hash_iterator_key_pair()",
-            "test_hash_table_new_free()",
-            "new_value(int)",
-            "generate_hash_table()",
             "test_hash_table_out_of_memory()",
+            "test_hash_table_remove()",
+            "main(int, char **)",
+            "new_key(int)",
+            "test_hash_table_free_functions()",
+            "test_hash_table_new_free()",
+            "test_hash_table_iterating()",
+            "new_value(int)",
+            "free_value(void *)",
             "test_hash_table_insert_lookup()",
             "free_key(void *)",
+            "test_hash_iterator_key_pair()",
             "test_hash_table_iterating_remove()",
-            "free_value(void *)",
-            "test_hash_table_free_functions()",
-            "main(int, char **)"
+            "generate_hash_table()"
         ]
     },
     {
         "test-queue.c": [
-            "test_queue_peek_tail()",
-            "test_queue_push_head()",
-            "generate_queue()",
-            "test_queue_peek_head()",
-            "test_queue_pop_tail()",
-            "test_queue_new_free()",
             "test_queue_pop_head()",
-            "test_queue_push_tail()",
+            "test_queue_peek_head()",
+            "main(int, char **)",
             "test_queue_is_empty()",
-            "main(int, char **)"
+            "test_queue_peek_tail()",
+            "test_queue_push_tail()",
+            "test_queue_new_free()",
+            "test_queue_push_head()",
+            "test_queue_pop_tail()",
+            "generate_queue()"
         ]
     },
     {
         "test-slist.c": [
+            "test_slist_next()",
+            "test_slist_iterate_bad_remove()",
+            "test_slist_iterate()",
+            "test_slist_length()",
+            "test_slist_nth_entry()",
+            "main(int, char **)",
+            "test_slist_free()",
+            "test_slist_remove_entry()",
+            "test_slist_nth_data()",
+            "test_slist_find_data()",
+            "test_slist_sort()",
+            "test_slist_prepend()",
             "generate_list()",
             "test_slist_append()",
-            "test_slist_find_data()",
-            "main(int, char **)",
-            "test_slist_nth_data()",
-            "test_slist_length()",
-            "test_slist_prepend()",
-            "test_slist_iterate()",
-            "test_slist_sort()",
-            "test_slist_nth_entry()",
             "test_slist_remove_data()",
-            "test_slist_next()",
-            "test_slist_remove_entry()",
-            "test_slist_iterate_bad_remove()",
-            "test_slist_to_array()",
-            "test_slist_free()"
+            "test_slist_to_array()"
         ]
     },
     {
         "test-arraylist.c": [
-            "generate_arraylist()",
-            "test_arraylist_index_of()",
-            "test_arraylist_remove_range()",
-            "test_arraylist_prepend()",
-            "test_arraylist_clear()",
-            "test_arraylist_append()",
-            "test_arraylist_insert()",
             "test_arraylist_new_free()",
-            "test_arraylist_remove()",
+            "test_arraylist_append()",
+            "generate_arraylist()",
+            "main(int, char **)",
+            "test_arraylist_index_of()",
+            "test_arraylist_insert()",
+            "test_arraylist_clear()",
             "test_arraylist_sort()",
-            "main(int, char **)"
+            "test_arraylist_prepend()",
+            "test_arraylist_remove_range()",
+            "test_arraylist_remove()"
         ]
     },
     {
         "framework.c": [
-            "run_tests(UnitTestFunction *)",
-            "run_test(UnitTestFunction)"
+            "run_test(UnitTestFunction)",
+            "run_tests(UnitTestFunction *)"
         ]
     },
     {
         "test-tinyexpr.c": [
+            "test_results()",
+            "test_pow()",
+            "test_combinatorics()",
+            "test_closure()",
+            "cell(void *, double)",
+            "sum2(double, double)",
+            "clo0(void *)",
+            "test_optimize()",
+            "test_dynamic()",
+            "sum5(double, double, double, double, double)",
+            "sum7(double, double, double, double, double, double, double)",
+            "clo1(void *, double)",
+            "clo2(void *, double, double)",
+            "main(int, char **)",
+            "test_variables()",
             "test_nans()",
+            "test_infs()",
+            "test_functions()",
+            "sum1(double)",
             "sum0()",
             "sum3(double, double, double)",
-            "sum6(double, double, double, double, double, double)",
-            "sum7(double, double, double, double, double, double, double)",
             "test_syntax()",
-            "test_closure()",
-            "test_results()",
-            "clo2(void *, double, double)",
-            "test_optimize()",
-            "main(int, char **)",
-            "sum2(double, double)",
-            "test_pow()",
-            "test_variables()",
-            "clo1(void *, double)",
-            "sum5(double, double, double, double, double)",
-            "test_infs()",
             "sum4(double, double, double, double)",
-            "cell(void *, double)",
-            "sum1(double)",
-            "clo0(void *)",
-            "test_combinatorics()",
-            "test_functions()",
-            "test_dynamic()"
+            "sum6(double, double, double, double, double, double)"
         ]
     },
     {
         "test-compare-functions.c": [
+            "test_string_equal()",
+            "test_pointer_compare()",
+            "test_int_equal()",
+            "test_int_compare()",
+            "main(int, char **)",
             "test_pointer_equal()",
             "test_string_compare()",
-            "test_string_nocase_compare()",
-            "test_string_equal()",
-            "test_int_equal()",
             "test_string_nocase_equal()",
-            "test_int_compare()",
-            "test_pointer_compare()",
-            "main(int, char **)"
+            "test_string_nocase_compare()"
         ]
     },
     {
         "test-trie.c": [
-            "test_trie_insert_binary()",
-            "generate_binary_trie()",
-            "test_trie_remove_binary()",
-            "test_trie_insert_out_of_memory()",
-            "test_trie_free_long()",
-            "test_trie_lookup()",
-            "test_trie_negative_keys()",
-            "test_trie_replace()",
-            "generate_trie()",
-            "main(int, char **)",
             "test_trie_insert_empty()",
-            "test_trie_new_free()",
+            "main(int, char **)",
+            "test_trie_insert_binary()",
+            "generate_trie()",
+            "test_trie_negative_keys()",
+            "test_trie_free_long()",
             "test_trie_insert()",
-            "test_trie_remove()"
+            "test_trie_new_free()",
+            "test_trie_lookup()",
+            "test_trie_replace()",
+            "test_trie_remove()",
+            "test_trie_insert_out_of_memory()",
+            "test_trie_remove_binary()",
+            "generate_binary_trie()"
         ]
     },
     {
         "test-hash-functions.c": [
-            "test_int_hash()",
-            "test_pointer_hash()",
             "test_string_hash()",
             "test_string_nocase_hash()",
-            "main(int, char **)"
+            "main(int, char **)",
+            "test_pointer_hash()",
+            "test_int_hash()"
         ]
     },
     {
         "test-set.c": [
-            "test_set_query()",
-            "test_set_union()",
             "test_set_free_function()",
             "test_set_new_free()",
-            "test_set_to_array()",
-            "new_value(int)",
+            "main(int, char **)",
             "test_set_iterating()",
-            "test_set_iterating_remove()",
-            "generate_set()",
             "test_set_out_of_memory()",
-            "free_value(void *)",
-            "test_set_remove()",
+            "generate_set()",
+            "test_set_query()",
             "test_set_intersection()",
+            "new_value(int)",
+            "free_value(void *)",
             "test_set_insert()",
-            "main(int, char **)"
+            "test_set_remove()",
+            "test_set_union()",
+            "test_set_to_array()",
+            "test_set_iterating_remove()"
         ]
     },
     {
         "test-avl-tree.c": [
+            "test_avl_tree_new()",
+            "test_out_of_memory()",
+            "main(int, char **)",
+            "find_subtree_height(AVLTreeNode *)",
+            "validate_subtree(AVLTreeNode *)",
             "test_avl_tree_free()",
+            "validate_tree(AVLTree *)",
             "test_avl_tree_to_array()",
             "create_tree()",
-            "test_avl_tree_new()",
-            "test_avl_tree_lookup()",
-            "test_out_of_memory()",
-            "validate_tree(AVLTree *)",
-            "validate_subtree(AVLTreeNode *)",
-            "main(int, char **)",
+            "test_avl_tree_child()",
             "test_avl_tree_remove()",
-            "find_subtree_height(AVLTreeNode *)",
             "test_avl_tree_insert_lookup()",
-            "test_avl_tree_child()"
+            "test_avl_tree_lookup()"
         ]
     },
     {
         "test-list.c": [
-            "generate_list()",
-            "test_list_nth_entry()",
-            "test_list_length()",
-            "test_list_nth_data()",
-            "test_list_iterate()",
-            "test_list_remove_entry()",
-            "test_list_to_array()",
-            "test_list_next()",
-            "test_list_find_data()",
-            "test_list_free()",
-            "test_list_iterate_bad_remove()",
-            "test_list_append()",
             "check_list_integrity(ListEntry *)",
-            "test_list_prepend()",
+            "test_list_nth_entry()",
+            "test_list_append()",
+            "main(int, char **)",
+            "test_list_free()",
+            "test_list_next()",
             "test_list_remove_data()",
+            "test_list_iterate_bad_remove()",
+            "test_list_iterate()",
+            "test_list_length()",
+            "test_list_remove_entry()",
+            "test_list_nth_data()",
+            "generate_list()",
             "test_list_sort()",
-            "main(int, char **)"
+            "test_list_find_data()",
+            "test_list_prepend()",
+            "test_list_to_array()"
         ]
     }
 ]

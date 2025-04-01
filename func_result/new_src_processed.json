@@ -1,50 +1,36 @@
 [
     {
-        "preopen": [
-            "vm_sym",
-            "vl_init",
-            "preopen_LTX_get_vtable",
-            "free_symlists",
-            "lt_dlpreload",
-            "lt_dlpreload_default",
-            "vl_exit",
-            "add_symlist",
-            "lt_dlpreload_open",
-            "vm_close",
-            "vm_open"
+        "progname": [
+            "set_program_name"
         ],
-        "lt__alloc": [
-            "lt__zalloc",
-            "lt__strdup",
-            "lt__memdup",
-            "lt__malloc",
-            "lt__realloc",
-            "alloc_die_default"
+        "resuse": [
+            "resuse_end",
+            "resuse_start"
         ],
-        "slist": [
-            "slist_sort_merge"
+        "unistd": [],
+        "getprogname": [
+            "getprogname"
         ],
-        "lt_dlloader": [
-            "loader_callback",
-            "lt_dlloader_next",
-            "lt_dlloader_find",
-            "lt_dlloader_add",
-            "lt_dlloader_get",
-            "lt_dlloader_remove"
+        "stripslash": [
+            "strip_trailing_slashes"
         ],
-        "lt_error": [
-            "lt__error_string",
-            "lt_dlseterror",
-            "lt__set_last_error",
-            "lt_dladderror",
-            "lt__get_last_error"
+        "version-etc-fsf": [],
+        "version-etc": [
+            "version_etc",
+            "version_etc_ar",
+            "version_etc_va",
+            "emit_bug_reporting_address",
+            "version_etc_arn"
         ],
-        "dlopen": [
-            "vm_sym",
-            "vl_exit",
-            "get_vtable",
-            "vm_close",
-            "vm_open"
+        "localtime-buffer": [],
+        "rusage-kb": [],
+        "dirname-lgpl": [
+            "mdir_name",
+            "dir_len"
+        ],
+        "basename-lgpl": [
+            "base_len",
+            "last_component"
         ]
     }
 ]
