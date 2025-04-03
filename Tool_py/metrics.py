@@ -253,7 +253,10 @@ def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_
     for source, rate in once_pass_rate.items():
         print(f"{source}: {rate:.2%}")
     
-    overall_pass_rate = sum(pass_count for pass_count, _ in once_pass_counts.values()) / sum(total_tests for _, total_tests in once_pass_counts.values())
+    if sum(total_tests for _, total_tests in once_pass_counts.values()) == 0:
+        overall_pass_rate = 0
+    else:
+        overall_pass_rate = sum(pass_count for pass_count, _ in once_pass_counts.values()) / sum(total_tests for _, total_tests in once_pass_counts.values())
     print(f"\nOverall pass rate: {overall_pass_rate:.2%}")
 
     # 保存到 CSV 文件

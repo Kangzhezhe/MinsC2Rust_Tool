@@ -112,6 +112,7 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
     calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manager)
     
+    # return
 
     # 工程结构重构
     if not eval_only:
@@ -135,6 +136,8 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                     f.write('\n')
                 child_source = include_dict.get(source, [])
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
+
+    
 
     # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
     #     json.dump(results, f, indent=4)
