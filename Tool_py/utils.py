@@ -11,6 +11,7 @@ import shutil
 import signal
 import ast
 
+
 def find_elements(list1, list2):
     """
     在两个列表中查找交集元素。
@@ -24,6 +25,13 @@ def find_elements(list1, list2):
     """
     set2 = set(list2)
     return [element for element in list1 if element in set2]
+
+def extract_rust_code(text):
+    # 使用正则表达式匹配 ```rust 和 ``` 之间的内容
+    match = re.search(r"```rust(.*?)```", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()  # 提取并去除首尾空白
+    return None
 
 def extract_related_items(source_str, target_str,names_list,not_found = False,exlude_str = ""):
     """
@@ -68,6 +76,8 @@ def extract_related_items(source_str, target_str,names_list,not_found = False,ex
     else:    
         return ""
 
+def decompose_project(data_manager, tmp_dir, ouput_dir):
+    pass
 
 def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
     compile_error2 = ''
@@ -106,7 +116,8 @@ def compile_all_files(all_files, results_copy, tmp_dir, data_manager):
     return compile_error2
 
 def has_generic_parameters(function_str):
-    pattern = r"fn\s+\w+\s*<[^>]*>\s*\([^)]*\)\s*\{[^}]*\}"
+    # 改进的正则表达式，支持泛型参数和函数体
+    pattern = r"pub\s+fn\s+\w+\s*<[^>]*>\s*"
     match = re.search(pattern, function_str)
     return bool(match)
 

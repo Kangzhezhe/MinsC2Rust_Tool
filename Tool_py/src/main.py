@@ -38,7 +38,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     funcs_child = funcs_childs[test_source_name]
 
     max_history_length = 0
-    data_manager.get_include_indices(test_source_name)
     _, _, i = data_manager.get_content(func_name)
     if i != -1 and i in data_manager.include_files_indices:
         source_name = source_names[i]
@@ -75,7 +74,6 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     all_child_func_list = child_funs_list + child_funs_c_list
     pointer_functions = [f for f in data_manager.all_pointer_funcs if f in all_child_func_list and f != func_name]
     
-
     child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(target_str)-len(source_context))
     child_funs_prompt_list = child_funs_prompt_list.strip(',').split(',')
 
@@ -110,13 +108,13 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     compile_error1 = ''
     max_history_length = params['max_history_length']
     max_history_limit_tokens = params['max_history_limit_tokens']
-    trajectory_memory = Memory(max_size=10, memory_type="Trajectory")
+    trajectory_memory = Memory(max_size=5, memory_type="Trajectory")
     compile_error = ''
     max_json_insert_retries = params['max_json_insert_retries']
     if len(child_funs_c_list) > 1:
-        max_regenerations = 2
+        max_regenerations = 3
     else:
-        max_regenerations = min(3 + depth, params['max_regenerations'])
+        max_regenerations = min(4 + depth, params['max_regenerations'])
 
     if test_source_name == 'test-tinyexpr':
         max_regenerations -= 2
@@ -359,7 +357,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                     # all_files = data_manager.all_include_files
                     while True:
                         debug(f"Prompt length: {len(prompt1)}")
-                        response = generate_response(prompt1,llm_model,0)
+                        response = generate_response(prompt1,'qwen',0)
                         response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
                         debug(response)
                         try:
@@ -468,17 +466,23 @@ def process_test_source_name(test_source_name, funcs, source_names, funcs_childs
     checkpoint_interval = params['checkpoint_interval']
     func_counter = 0
 
-    local_results = copy.deepcopy(shared_results)
-    local_all_error_funcs_content = copy.deepcopy(shared_all_error_funcs_content)
-    local_once_retry_count_dict = copy.deepcopy(shared_once_retry_count_dict)
+    # local_results = copy.deepcopy(shared_results)
+    # local_all_error_funcs_content = copy.deepcopy(shared_all_error_funcs_content)
+    # local_once_retry_count_dict = copy.deepcopy(shared_once_retry_count_dict)
 
+    data_manager.get_include_indices(test_source_name)
+    
+    local_results = {key: copy.deepcopy(value) for key, value in shared_results.items() if key in data_manager.all_include_files}
+    local_all_error_funcs_content = {key: copy.deepcopy(value) for key, value in shared_all_error_funcs_content.items() if key in data_manager.all_include_files}
+    local_once_retry_count_dict = {key: copy.deepcopy(value) for key, value in shared_once_retry_count_dict.items() if key in data_manager.all_include_files}
+    
 
     with tqdm(funcs.items(), desc=f"{test_source_name}") as pbar:
         for func_name, depth in pbar:
             pbar.set_postfix(func_name=func_name) 
 
             result = process_func(
-                test_source_name, func_name, depth, start_time, source_names, funcs_childs, copy.deepcopy(data_manager), local_results, logger, llm_model, tmp_dir, local_all_error_funcs_content, local_once_retry_count_dict, funcs, lock, params
+                test_source_name, func_name, depth, start_time, source_names, funcs_childs, data_manager, local_results, logger, llm_model, tmp_dir, local_all_error_funcs_content, local_once_retry_count_dict, funcs, lock, params
             )
             if result is not None:
                 updated_results, updated_all_error_funcs_content, updated_once_retry_count_dict = result
@@ -644,7 +648,7 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
             futures = []
             for test_source_name in group:
-                future = executor.submit(process_test_source_name, test_source_name, sorted_funcs_depth[test_source_name], source_names, funcs_childs, data_manager, results, all_error_funcs_content, once_retry_count_dict, logger, llm_model, tmp_dir, start_time, lock, output_dir, params)
+                future = executor.submit(process_test_source_name, test_source_name, sorted_funcs_depth[test_source_name], source_names, funcs_childs,copy.deepcopy(data_manager), results, all_error_funcs_content, once_retry_count_dict, logger, llm_model, tmp_dir, start_time, lock, output_dir, params)
                 futures.append(future)
 
             # 等待所有任务完成并更新结果
@@ -673,6 +677,8 @@ async def main():
     llm_model = "qwen"
     # llm_model = "zhipu"
     # llm_model = "deepseek"
+    # llm_model = "gpt4o"
+    # llm_model = "claude"
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
@@ -751,8 +757,8 @@ async def main():
     once_retry_count_dict = defaultdict(dict)
     results = defaultdict(dict)
 
-
     results, once_retry_count_dict, all_error_funcs_content =  load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
+
 
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params

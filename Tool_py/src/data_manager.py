@@ -119,10 +119,11 @@ class DataManager:
                     child_context = child_context + '\n' + source_context
         return child_context, child_funs, ''
 
-    def get_details(self, func_names):
+    def get_details(self, func_names,return_raw=False):
         before_details = ''
         seen_details = set()
         converted_dict = {}
+        raw_details = set()
         for func_name in func_names:
             _, _, i = self.get_content(func_name)
             jsonfile = self.data[i]
@@ -135,6 +136,10 @@ class DataManager:
                     converted = ast.literal_eval(detail)
                     converted_dict.update(converted)
 
+                detail = source_extra[details_index:]
+                if detail not in raw_details:
+                    raw_details.add(detail)
+
         before_details = repr(converted_dict)
         # try:
         #     converted_dict = ast.literal_eval(before_details)
@@ -142,7 +147,10 @@ class DataManager:
         #     print("Error: Invalid string format for conversion.")
         #     converted_dict = {}
 
-        return list(converted_dict.keys()), before_details
+        if return_raw:
+            return list(converted_dict.keys()), before_details, "\n".join(raw_details)
+        else:
+            return list(converted_dict.keys()), before_details
 
     def get_all_child_functions(self, func_name, funcs_child):
         all_child_funs = []

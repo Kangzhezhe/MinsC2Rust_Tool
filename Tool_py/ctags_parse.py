@@ -24,14 +24,17 @@ def find_matching_brace(content, start_pos):
     return -1
 
 def find_struct(content, pattern):
-    regex = pattern + r'\s*{'
+    if '{' in pattern:
+        regex = pattern
+    else:
+        regex = pattern + r'\s*{'
     match = re.search(regex, content)
     if match:
         start_pos = match.end() - 1
         end_pos = find_matching_brace(content, start_pos)
         if end_pos != -1:
             struct_def = content[match.start():end_pos + 1]
-            return struct_def
+            return struct_def + ';'
     return None
 
 
@@ -96,7 +99,7 @@ def extract_info_from_c_file(c_file):
 
 if __name__ == '__main__':
     # 示例用法
-    c_file = '/home/mins01//binn/src/binn.c'
+    c_file = '/home/mins01/Test_decompose/tmp/src/set.c'
     
     # 提取信息
     result = extract_info_from_c_file(c_file)

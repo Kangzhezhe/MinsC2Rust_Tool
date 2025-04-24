@@ -82,14 +82,13 @@ def process_compile_commands(compile_commands_path):
         json.dump(compile_commands, file, indent=4)
     return compile_commands
 
-def process_files(compile_commands_path, output_dir):
+def process_files(compile_commands_path, output_dir, excluded_files = {"alloc-testing", "test-alloc-testing", "framework"}):
     # 读取 compile_commands.json 文件
     compile_commands = process_compile_commands(compile_commands_path)
 
     # 存储每个 .c 文件及其包含的 .h 文件的字典
     include_dict = {}
     all_file_paths = []
-    excluded_files = {"alloc-testing", "test-alloc-testing", "framework"}
 
     # 处理每个 .c 文件
     for entry in compile_commands:

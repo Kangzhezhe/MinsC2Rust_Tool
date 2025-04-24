@@ -69,7 +69,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
 
     return f"""
         将以下C语言库函数转换为Rust库函数，要求如下：
-        1. 返回值必须包含{child_funs_c}的Rust函数定义，保留函数命名与接口，不需要给出测试函数，不要使用面向对象封装函数。
+        1. 返回值必须包含{child_funs_c}的Rust函数定义，保留函数命名与接口，不需要给出测试函数，不要使用面向对象封装函数，只返回转换之后的代码，你的返回值不要有任何的自然语言，不然编译不通过。
         2. 对于未定义的结构体、全局变量、宏、枚举，需要给出定义。
         3. {ask}
         返回格式：
@@ -86,7 +86,7 @@ def get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context,
 def get_error_fixing_prompt(template, compile_error,before_details,pointer_functions,names_list):
     return f"""
         Prompt:
-        帮我修改以下rust代码中出现的编译错误，只返回所有全局变量、结构体、全局变量、宏定义、枚举定义和被修改后的函数：
+        帮我修改以下rust代码中出现的编译错误，只返回所有全局变量、结构体、全局变量、宏定义、枚举定义和被修改后的函数代码，你的返回值只有代码，不要有任何的自然语言，不然编译不通过：
         * 要求：
         0. 部分函数不允许修改，已在注释中说明了，如这些函数：{pointer_functions},因为工程中其他文件中的函数也调用了他们，如果修改了，可能会影响其他文件内函数的功能，
         如果出现这些函数作为函数指针使用，出现参数类型不匹配的错误，只允许在使用函数指针的地方使用局部的临时函数，局部临时函数名统一用xxx_wrap，作用域只在函数体内部，不允许修改函数定义与所有相关注释
