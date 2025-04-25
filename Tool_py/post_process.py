@@ -508,7 +508,7 @@ if __name__ == "__main__":
     for f in source_path:
         with open(f, 'r') as file:
             data.append(json.load(file))
-    
+ 
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test) 
 
     post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model,eval_only=eval_only,test_timeout=params.get('test_timeout',60000))
