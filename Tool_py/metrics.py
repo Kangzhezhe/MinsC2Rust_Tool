@@ -276,95 +276,103 @@ def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_
 
 def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manager):
     """
-    计算每个源文件的代码行数（LOC）、总代码行数（Total LOC）和行覆盖率（LCov），并打印和保存为 CSV 文件。
-
-    参数:
-        output_dir (str): 输出目录。
-        results (dict): 包含每个源文件及其函数的结果数据。
-        sorted_funcs_depth (dict): 按深度排序的函数依赖关系。
-        data_manager (object): 数据管理器，用于获取函数内容和包含关系。
-
-    返回:
-        float: 总体代码行数的统计结果。
+    计算代码统计指标，包含函数数量、最大函数长度和平均函数长度
     """
-    detailed_data = []  # 用于存储详细数据行
+    detailed_data = []
     total_loc_all = 0
     loc_all = 0
     rust_loc_all = 0
+    total_func_count = 0  # 新增：总函数计数
+    all_fn_lens = []      # 新增：存储所有函数长度
 
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
-        if test_source_name not in results:
-            continue
+        # if test_source_name not in results:
+        #     continue
 
-        # 获取包含关系索引（如果需要）
         data_manager.get_include_indices(test_source_name)
-
+        
         total_loc = 0
         loc = 0
         rust_loc = 0
+        fn_lens = []      # 新增：单文件函数长度记录
 
+        # 处理函数部分
         for func in funcs:
             func_content, _, _ = data_manager.get_content(func)
-            if data_manager.get_result(func,results) != '':
-                loc += len(func_content.split('\n'))
-                rust_loc += len(data_manager.get_result(func,results).split('\n'))
-            total_loc += len(func_content.split('\n'))
-        _,before_details = data_manager.get_details(funcs)
-        converted_dict = ast.literal_eval(before_details)
-        non_function_elements = '\n'.join(converted_dict.values())
-        loc += len(non_function_elements.split('\n'))
-        total_loc += len(non_function_elements.split('\n'))
+            fn_len = len(func_content.split('\n'))  # 计算函数长度
+            fn_lens.append(fn_len)
+            
+            if data_manager.get_result(func, results):
+                loc += fn_len
+                rust_loc += len(data_manager.get_result(func, results).split('\n'))
+            total_loc += fn_len
 
-        # 累计总 LOC 和总代码行数
+        # 处理非函数部分
+        _, before_details = data_manager.get_details(funcs)
+        non_function = '\n'.join(ast.literal_eval(before_details).values())
+        non_fn_len = len(non_function.split('\n'))
+        loc += non_fn_len
+        total_loc += non_fn_len
+
+        # 计算统计指标
+        func_count = len(funcs)
+        max_fn = max(fn_lens) if fn_lens else 0
+        mean_fn = sum(fn_lens)/func_count if func_count > 0 else 0
+        
+        # 累计全局数据
+        total_func_count += func_count
+        all_fn_lens.extend(fn_lens)
         total_loc_all += total_loc
         loc_all += loc
         rust_loc_all += rust_loc
 
-        # 计算行覆盖率（LCov）
-        lcov = loc / total_loc if total_loc > 0 else 0
-
-        # 添加详细信息到数据列表
+        # 记录文件数据
         detailed_data.append({
             'Source': test_source_name,
             'LOC': loc,
             'Total LOC': total_loc,
-            'LCov': lcov,
-            'Rust LOC': rust_loc
+            'LCov': loc / total_loc if total_loc else 0,
+            'Rust LOC': rust_loc,
+            'Func Count': func_count,       # 新增字段
+            'Max Fn Len': max_fn,           # 新增字段
+            'Mean Fn Len': mean_fn          # 新增字段
         })
 
-    # 添加总体统计
-    overall_lcov = loc_all / total_loc_all if total_loc_all > 0 else 0
+    # 添加全局统计数据
+    overall_lcov = loc_all / total_loc_all if total_loc_all else 0
     detailed_data.append({
         'Source': 'Overall',
         'LOC': loc_all,
         'Total LOC': total_loc_all,
         'LCov': overall_lcov,
-        'Rust LOC': rust_loc_all
+        'Rust LOC': rust_loc_all,
+        'Func Count': total_func_count,
+        'Max Fn Len': max(all_fn_lens) if all_fn_lens else 0,
+        'Mean Fn Len': sum(all_fn_lens)/total_func_count if total_func_count else 0
     })
 
-    # 打印统计信息
-    print("代码行数统计已保存到 loc_statistics.csv 文件")
-    print("\nLOC Statistics:")
+    # 打印输出
+    print("\n数据集统计信息:")
+    header = f"{'Source':<15} | {'LOC':>6} | {'Total':>6} | {'Cov':>6} | {'Rust':>6} | {'Funcs':>5} | {'MaxLen':>6} | {'AvgLen':>6}"
+    print(header)
     for row in detailed_data:
-        print(f"{row['Source']}: LOC = {row['LOC']}, Total LOC = {row['Total LOC']}, LCov = {row['LCov']:.2%}, Rust LOC = {row['Rust LOC']}")
+        output = f"{row['Source'][:14]:<15} | {row['LOC']:6} | {row['Total LOC']:6} | " \
+                f"{row['LCov']:>5.1%} | {row['Rust LOC']:6} | {row['Func Count']:5} | " \
+                f"{row['Max Fn Len']:6} | {row['Mean Fn Len']:6.1f}"
+        print(output)
 
-    # 保存到 CSV 文件
-    os.makedirs(output_dir, exist_ok=True)
+    # 保存CSV文件
     csv_path = os.path.join(output_dir, 'loc_statistics.csv')
-    with open(csv_path, 'w', newline='') as csvfile:
-        fieldnames = ['Source', 'LOC', 'Total LOC', 'LCov', 'Rust LOC']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=[
+            'Source', 'LOC', 'Total LOC', 'LCov', 'Rust LOC', 
+            'Func Count', 'Max Fn Len', 'Mean Fn Len'
+        ])
         writer.writeheader()
         for row in detailed_data:
-            writer.writerow({
-                'Source': row['Source'],
-                'LOC': row['LOC'],
-                'Total LOC': row['Total LOC'],
-                'LCov': f"{row['LCov']:.2%}",
-                'Rust LOC': row['Rust LOC']
-            })
+            row['LCov'] = f"{row['LCov']:.1%}"
+            row['Mean Fn Len'] = f"{row['Mean Fn Len']:.1f}"
+            writer.writerow(row)
 
-    print(f"\n统计结果已保存到: {csv_path}")
-
+    print(f"\n完整统计数据已保存至: {csv_path}")
     return total_loc_all

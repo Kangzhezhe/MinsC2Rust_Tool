@@ -97,6 +97,10 @@ trajectory_memory = Memory(max_size=10, memory_type="Trajectory")
 
 
 def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False,test_timeout=60000):
+    all_error_funcs_content = defaultdict(dict) 
+    once_retry_count_dict = defaultdict(dict)
+    results = defaultdict(dict)
+
     if os.path.exists(os.path.join(output_dir, 'results.json')):
         with open(os.path.join(output_dir, 'results.json'), 'r') as file:
             results = json.load(file)
@@ -108,6 +112,7 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     if os.path.exists(os.path.join(output_dir, 'once_retry_count_dict.json')):
         with open(os.path.join(output_dir, 'once_retry_count_dict.json'), 'r') as f:
             once_retry_count_dict = json.load(f)
+    
     calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_manager)
     calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
     calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manager)
