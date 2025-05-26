@@ -10,7 +10,7 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from parse_config import read_config, setup_project_directories
 from models.llm_model import generate_response
-from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count,calculate_loc_statistics
+from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count,calculate_loc_statistics, merge_results
 from merge_c_h import process_files
 from utils import deduplicate_code, run_command, update_test_timeout,parse_and_deduplicate_errors,Memory
 from prompts import generate_extra_prompt,fix_extra_prompt, get_json_parsing_fix_prompt
@@ -296,6 +296,9 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
 
     print("Calculating asserts count...")
     calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir)
+
+    print("\n====================================================================")
+    merge_results(output_dir)
     
 
 def run_cargo_test(output_project_path,output_dir):

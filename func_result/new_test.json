@@ -1,45 +1,45 @@
 [
     {
         "test-ht.c": [
-            "test_ht_iterator()",
-            "test_ht_create_and_destroy()",
-            "test_ht_set_and_get()",
+            "main()",
             "test_ht_update_value()",
+            "test_ht_set_and_get()",
             "test_ht_memory_management()",
-            "main()"
+            "test_ht_iterator()",
+            "test_ht_create_and_destroy()"
         ]
     },
     {
         "test-rgba.c": [
+            "test_to_string()",
+            "test_named()",
             "main(int, char **)",
             "test_rgba()",
             "test_hex()",
-            "test_to_string()",
-            "test_named()",
             "test_rgb()"
         ]
     },
     {
         "test-buffer.c": [
-            "test_buffer_slice__range_error()",
-            "test_buffer_formatting()",
-            "main()",
-            "test_buffer_clear()",
+            "test_buffer_slice__end_overflow()",
             "test_buffer_fill()",
             "test_buffer_prepend_issue_15()",
-            "test_buffer_new()",
-            "test_buffer_equals()",
-            "test_buffer_slice__end_overflow()",
-            "test_buffer_indexof()",
-            "equal(char *, char *)",
-            "test_buffer_new_with_size()",
-            "test_buffer_append()",
             "test_buffer_slice()",
-            "test_buffer_prepend()",
-            "test_buffer_append_n()",
             "test_buffer_compact()",
+            "test_buffer_append()",
+            "equal(char *, char *)",
+            "main()",
+            "test_buffer_new_with_size()",
+            "test_buffer_clear()",
+            "test_buffer_slice__range_error()",
+            "test_buffer_new()",
+            "test_buffer_append_n()",
+            "test_buffer_prepend()",
             "test_buffer_append__grow()",
+            "test_buffer_equals()",
+            "test_buffer_indexof()",
             "test_buffer_trim()",
+            "test_buffer_formatting()",
             "test_buffer_slice__end()"
         ]
     },
@@ -57,13 +57,13 @@
     },
     {
         "test-quadtree.c": [
-            "test_tree()",
-            "main(int, const char **)",
-            "test_node()",
-            "test_bounds()",
             "test_points()",
             "ascent(quadtree_node_t *)",
-            "descent(quadtree_node_t *)"
+            "test_node()",
+            "main(int, const char **)",
+            "descent(quadtree_node_t *)",
+            "test_bounds()",
+            "test_tree()"
         ]
     }
 ]

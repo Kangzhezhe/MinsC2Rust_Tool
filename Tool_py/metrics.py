@@ -6,7 +6,7 @@ import re
 import subprocess
 from tqdm import tqdm
 from run_tests import run_tests_and_calculate_rates
-
+import pandas as pd
 
 def get_source_path(source, src_names,output_project_path):
     if source in src_names:
@@ -376,3 +376,53 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
 
     print(f"\nFull statistics have been saved to: {csv_path}")
     return total_loc_all
+
+
+def merge_results(output_dir):
+    def clean_source_col(df):
+        df['Source'] = df['Source'].astype(str).str.replace(r'^test-', '', regex=True)
+        return df
+
+    # 拼接各文件路径
+    tests_path = os.path.join(output_dir, 'tests_pass_rates.csv')
+    compile_path = os.path.join(output_dir, 'compile_pass_rate.csv')
+    loc_path = os.path.join(output_dir, 'loc_statistics.csv')
+    safety_path = os.path.join(output_dir, 'safety.csv')
+    output_path = os.path.join(output_dir, 'test_project', 'metrics.csv')
+
+    # 读取csv并处理Source列
+    tests = clean_source_col(pd.read_csv(tests_path))
+    compile = clean_source_col(pd.read_csv(compile_path))
+    loc = clean_source_col(pd.read_csv(loc_path))
+    safety = clean_source_col(pd.read_csv(safety_path))
+
+    # 合并
+    df = loc[['Source', 'Total LOC', 'Func Count']].merge(
+        compile[['Source', 'Pass Rate (with test)']],
+        on='Source', how='left'
+    ).merge(
+        tests[['Source', 'Pass Rate']],
+        on='Source', how='left'
+    ).merge(
+        safety[['Source', 'Safe Loc', 'Safe Ref']],
+        on='Source', how='left'
+    )
+
+    # 重命名列
+    df = df.rename(columns={
+        'Total LOC': 'Loc',
+        'Func Count': 'Fns',
+        'Pass Rate (with test)': 'Compiled',
+        'Pass Rate': 'Passed'
+    })
+
+    # 删除所有关键列都为空的行
+    df = df.dropna(subset=['Compiled', 'Passed', 'Safe Loc', 'Safe Ref'], how='all')
+
+    # 确保输出目录存在
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # 保存结果
+    df.to_csv(output_path, index=False)
+
+    print(f"overall metrics have been saved to: {output_path}")
