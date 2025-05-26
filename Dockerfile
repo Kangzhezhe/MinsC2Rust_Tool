@@ -1,5 +1,5 @@
 # 第一阶段：构建基础镜像
-FROM docker.linkedbus.com/rust AS base
+FROM rust AS base
 LABEL author daiqian <alexdai@vivo.com>
 
 ENV RUSTUP_DIST_SERVER https://mirrors.tuna.tsinghua.edu.cn/rustup
@@ -38,7 +38,6 @@ FROM base AS c2rust
 
 RUN ln -sf /usr/local/bin/python3.12 /usr/bin/python3 && \
     ln -sf /usr/local/bin/pip3.12 /usr/bin/pip3
-
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y graphviz universal-ctags clang-14 libclang-14-dev cmake sudo && \

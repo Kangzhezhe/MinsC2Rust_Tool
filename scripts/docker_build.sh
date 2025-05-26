@@ -1,1 +1,1 @@
-docker build -t minsxiaofendui -f ./Dockerfile .
+docker build -t minsc2rust -f ./Dockerfile .

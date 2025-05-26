@@ -17,6 +17,7 @@ from prompts import generate_extra_prompt,fix_extra_prompt, get_json_parsing_fix
 from logger import logger_init
 from clang_callgraph import clang_callgraph
 from src.data_manager import DataManager
+from test_unsafe import calculate_safety_metrics
 
 def get_source_path(source, src_names,output_project_path):
     if source in src_names:
@@ -286,6 +287,7 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #             results = results_copy
 
     print("Running tests...")
+    calculate_safety_metrics(f'{output_project_path}/src',f'{output_dir}/safety.csv')
 
     update_test_timeout(f'{output_project_path}/tests', test_timeout)
     run_cargo_test(output_project_path,output_dir)

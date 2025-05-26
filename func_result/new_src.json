@@ -1,314 +1,108 @@
 [
     {
-        "slist.c": [
-            "slist_next(SListEntry *)",
-            "slist_iterate(SListEntry **, SListIterator *)",
-            "slist_nth_data(SListEntry *, unsigned int)",
-            "slist_free(SListEntry *)",
-            "slist_data(SListEntry *)",
-            "slist_to_array(SListEntry *)",
-            "slist_remove_entry(SListEntry **, SListEntry *)",
-            "slist_iter_remove(SListIterator *)",
-            "slist_set_data(SListEntry *, SListValue)",
-            "slist_sort(SListEntry **, SListCompareFunc)",
-            "slist_sort_internal(SListEntry **, SListCompareFunc)",
-            "slist_iter_next(SListIterator *)",
-            "slist_prepend(SListEntry **, SListValue)",
-            "slist_remove_data(SListEntry **, SListEqualFunc, SListValue)",
-            "slist_find_data(SListEntry *, SListEqualFunc, SListValue)",
-            "slist_iter_has_more(SListIterator *)",
-            "slist_nth_entry(SListEntry *, unsigned int)",
-            "slist_length(SListEntry *)",
-            "slist_append(SListEntry **, SListValue)"
+        "quadtree.c": [
+            "quadtree_node_new()",
+            "elision_(void *)",
+            "quadtree_bounds_new()",
+            "node_contains_(quadtree_node_t *, quadtree_point_t *)",
+            "quadtree_point_free(quadtree_point_t *)",
+            "quadtree_node_isempty(quadtree_node_t *)",
+            "quadtree_node_with_bounds(double, double, double, double)",
+            "find_(quadtree_node_t *, double, double)",
+            "quadtree_search(quadtree_t *, double, double)",
+            "quadtree_node_isleaf(quadtree_node_t *)",
+            "quadtree_bounds_free(quadtree_bounds_t *)",
+            "quadtree_insert(quadtree_t *, double, double, void *)",
+            "quadtree_new(double, double, double, double)",
+            "quadtree_free(quadtree_t *)",
+            "split_node_(quadtree_t *, quadtree_node_t *)",
+            "quadtree_bounds_extend(quadtree_bounds_t *, double, double)",
+            "quadtree_point_new(double, double)",
+            "quadtree_node_reset(quadtree_node_t *, void (*)(void *))",
+            "quadtree_node_free(quadtree_node_t *, void (*)(void *))",
+            "get_quadrant_(quadtree_node_t *, quadtree_point_t *)",
+            "insert_(quadtree_t *, quadtree_node_t *, quadtree_point_t *, void *)",
+            "quadtree_walk(quadtree_node_t *, void (*)(quadtree_node_t *), void (*)(quadtree_node_t *))",
+            "reset_node_(quadtree_t *, quadtree_node_t *)",
+            "quadtree_node_ispointer(quadtree_node_t *)"
         ]
     },
     {
-        "arraylist.c": [
-            "arraylist_sort(ArrayList *, ArrayListCompareFunc)",
-            "arraylist_index_of(ArrayList *, ArrayListEqualFunc, ArrayListValue)",
-            "arraylist_insert(ArrayList *, unsigned int, ArrayListValue)",
-            "arraylist_new(unsigned int)",
-            "arraylist_sort_internal(ArrayListValue *, unsigned int, ArrayListCompareFunc)",
-            "arraylist_remove_range(ArrayList *, unsigned int, unsigned int)",
-            "arraylist_enlarge(ArrayList *)",
-            "arraylist_append(ArrayList *, ArrayListValue)",
-            "arraylist_free(ArrayList *)",
-            "arraylist_prepend(ArrayList *, ArrayListValue)",
-            "arraylist_remove(ArrayList *, unsigned int)",
-            "arraylist_clear(ArrayList *)"
+        "ht.c": [
+            "ht_get(ht *, const char *)",
+            "hash_key(const char *)",
+            "ht_iterator(ht *)",
+            "ht_create()",
+            "ht_length(ht *)",
+            "ht_set(ht *, const char *, void *)",
+            "ht_expand(ht *)",
+            "ht_next(hti *)",
+            "ht_destroy(ht *)",
+            "ht_set_entry(ht_entry *, size_t, const char *, void *, size_t *)"
         ]
     },
     {
-        "rb-tree.c": [
-            "rb_tree_insert_case1(RBTree *, RBTreeNode *)",
-            "rb_tree_node_key(RBTreeNode *)",
-            "rb_tree_node_sibling(RBTreeNode *)",
-            "rb_tree_insert_case4(RBTree *, RBTreeNode *)",
-            "rb_tree_free_subtree(RBTreeNode *)",
-            "rb_tree_remove(RBTree *, RBTreeKey)",
-            "rb_tree_insert_case2(RBTree *, RBTreeNode *)",
-            "rb_tree_insert(RBTree *, RBTreeKey, RBTreeValue)",
-            "rb_tree_node_side(RBTreeNode *)",
-            "rb_tree_node_parent(RBTreeNode *)",
-            "rb_tree_num_entries(RBTree *)",
-            "rb_tree_node_uncle(RBTreeNode *)",
-            "rb_tree_node_replace(RBTree *, RBTreeNode *, RBTreeNode *)",
-            "rb_tree_rotate(RBTree *, RBTreeNode *, RBTreeNodeSide)",
-            "rb_tree_new(RBTreeCompareFunc)",
-            "rb_tree_remove_node(RBTree *, RBTreeNode *)",
-            "rb_tree_root_node(RBTree *)",
-            "rb_tree_node_value(RBTreeNode *)",
-            "rb_tree_to_array(RBTree *)",
-            "rb_tree_lookup(RBTree *, RBTreeKey)",
-            "rb_tree_lookup_node(RBTree *, RBTreeKey)",
-            "rb_tree_insert_case5(RBTree *, RBTreeNode *)",
-            "rb_tree_node_child(RBTreeNode *, RBTreeNodeSide)",
-            "rb_tree_insert_case3(RBTree *, RBTreeNode *)",
-            "rb_tree_free(RBTree *)"
+        "rgba.c": [
+            "rgba_from_name_string(const char *, short *)",
+            "rgba_from_string(const char *, short *)",
+            "rgba_from_rgb_string(const char *, short *)",
+            "rgba_inspect(uint32_t)",
+            "rgba_to_string(rgba_t, char *, size_t)",
+            "rgba_new(uint32_t)",
+            "rgba_from_hex_string(const char *, short *)",
+            "rgba_from_hex3_string(const char *)",
+            "rgba_from_rgba(uint8_t, uint8_t, uint8_t, uint8_t)",
+            "rgba_from_rgba_string(const char *, short *)",
+            "rgba_from_rgb(uint8_t, uint8_t, uint8_t)",
+            "rgba_from_hex6_string(const char *)",
+            "h(char)"
         ]
     },
     {
-        "tinyexpr.c": [
-            "te_interp(const char *, int *)",
-            "sub(double, double)",
-            "ncr(double, double)",
-            "negate(double)",
-            "find_lookup(const state *, const char *, int)",
-            "te_eval(const te_expr *)",
-            "optimize(te_expr *)",
-            "te_compile(const char *, const te_variable *, int, int *)",
-            "te_free_parameters(te_expr *)",
-            "term(state *)",
-            "expr(state *)",
-            "te_print(const te_expr *)",
-            "add(double, double)",
-            "pi()",
-            "find_builtin(const char *, int)",
-            "npr(double, double)",
-            "te_free(te_expr *)",
-            "base(state *)",
-            "list(state *)",
-            "factor(state *)",
-            "next_token(state *)",
-            "fac(double)",
-            "mul(double, double)",
-            "power(state *)",
-            "new_expr(const int, const te_expr **)",
-            "divide(double, double)",
-            "comma(double, double)",
-            "e()",
-            "pn(const te_expr *, int)"
+        "buffer.c": [
+            "buffer_new()",
+            "buffer_new_with_copy(char *)",
+            "buffer_new_with_size(size_t)",
+            "buffer_print(buffer_t *)",
+            "buffer_resize(buffer_t *, size_t)",
+            "buffer_trim(buffer_t *)",
+            "buffer_indexof(buffer_t *, char *)",
+            "buffer_prepend(buffer_t *, char *)",
+            "buffer_free(buffer_t *)",
+            "buffer_appendf(buffer_t *, const char *, ...)",
+            "buffer_append_n(buffer_t *, const char *, size_t)",
+            "buffer_clear(buffer_t *)",
+            "buffer_trim_left(buffer_t *)",
+            "buffer_slice(buffer_t *, size_t, ssize_t)",
+            "buffer_trim_right(buffer_t *)",
+            "buffer_equals(buffer_t *, buffer_t *)",
+            "buffer_fill(buffer_t *, int)",
+            "buffer_append(buffer_t *, const char *)",
+            "buffer_new_with_string_length(char *, size_t)",
+            "buffer_size(buffer_t *)",
+            "buffer_length(buffer_t *)",
+            "buffer_new_with_string(char *)",
+            "buffer_compact(buffer_t *)"
         ]
     },
     {
-        "bloom-filter.c": [
-            "bloom_filter_free(BloomFilter *)",
-            "bloom_filter_load(BloomFilter *, unsigned char *)",
-            "bloom_filter_new(unsigned int, BloomFilterHashFunc, unsigned int)",
-            "bloom_filter_intersection(BloomFilter *, BloomFilter *)",
-            "bloom_filter_read(BloomFilter *, unsigned char *)",
-            "bloom_filter_union(BloomFilter *, BloomFilter *)",
-            "bloom_filter_query(BloomFilter *, BloomFilterValue)",
-            "bloom_filter_insert(BloomFilter *, BloomFilterValue)"
+        "urlparser.c": [
+            "ParseURL(char *, URL_PARTS *)",
+            "PrintURL(struct URL_PARTS *)"
         ]
     },
     {
-        "hash-int.c": [
-            "int_hash(void *)"
-        ]
-    },
-    {
-        "binomial-heap.c": [
-            "binomial_tree_merge(BinomialHeap *, BinomialTree *, BinomialTree *)",
-            "binomial_heap_free(BinomialHeap *)",
-            "binomial_tree_ref(BinomialTree *)",
-            "binomial_heap_new(BinomialHeapType, BinomialHeapCompareFunc)",
-            "binomial_heap_merge(BinomialHeap *, BinomialHeap *)",
-            "binomial_heap_pop(BinomialHeap *)",
-            "binomial_tree_unref(BinomialTree *)",
-            "binomial_heap_num_entries(BinomialHeap *)",
-            "binomial_heap_merge_undo(BinomialTree **, unsigned int)",
-            "binomial_heap_cmp(BinomialHeap *, BinomialHeapValue, BinomialHeapValue)",
-            "binomial_heap_insert(BinomialHeap *, BinomialHeapValue)"
-        ]
-    },
-    {
-        "hash-table.c": [
-            "hash_table_iter_next(HashTableIterator *)",
-            "hash_table_free(HashTable *)",
-            "hash_table_register_free_functions(HashTable *, HashTableKeyFreeFunc, HashTableValueFreeFunc)",
-            "hash_table_num_entries(HashTable *)",
-            "hash_table_remove(HashTable *, HashTableKey)",
-            "hash_table_allocate_table(HashTable *)",
-            "hash_table_enlarge(HashTable *)",
-            "hash_table_insert(HashTable *, HashTableKey, HashTableValue)",
-            "hash_table_iter_has_more(HashTableIterator *)",
-            "hash_table_iterate(HashTable *, HashTableIterator *)",
-            "hash_table_lookup(HashTable *, HashTableKey)",
-            "hash_table_free_entry(HashTable *, HashTableEntry *)",
-            "hash_table_new(HashTableHashFunc, HashTableEqualFunc)"
-        ]
-    },
-    {
-        "list.c": [
-            "list_nth_entry(ListEntry *, unsigned int)",
-            "list_next(ListEntry *)",
-            "list_prepend(ListEntry **, ListValue)",
-            "list_remove_data(ListEntry **, ListEqualFunc, ListValue)",
-            "list_set_data(ListEntry *, ListValue)",
-            "list_iter_next(ListIterator *)",
-            "list_append(ListEntry **, ListValue)",
-            "list_sort_internal(ListEntry **, ListCompareFunc)",
-            "list_prev(ListEntry *)",
-            "list_find_data(ListEntry *, ListEqualFunc, ListValue)",
-            "list_to_array(ListEntry *)",
-            "list_iter_remove(ListIterator *)",
-            "list_length(ListEntry *)",
-            "list_nth_data(ListEntry *, unsigned int)",
-            "list_free(ListEntry *)",
-            "list_sort(ListEntry **, ListCompareFunc)",
-            "list_remove_entry(ListEntry **, ListEntry *)",
-            "list_data(ListEntry *)",
-            "list_iterate(ListEntry **, ListIterator *)",
-            "list_iter_has_more(ListIterator *)"
-        ]
-    },
-    {
-        "sortedarray.c": [
-            "sortedarray_clear(SortedArray *)",
-            "sortedarray_free(SortedArray *)",
-            "sortedarray_last_index(SortedArray *, SortedArrayValue, unsigned int, unsigned int)",
-            "sortedarray_index_of(SortedArray *, SortedArrayValue)",
-            "sortedarray_insert(SortedArray *, SortedArrayValue)",
-            "sortedarray_length(SortedArray *)",
-            "sortedarray_remove_range(SortedArray *, unsigned int, unsigned int)",
-            "sortedarray_remove(SortedArray *, unsigned int)",
-            "sortedarray_first_index(SortedArray *, SortedArrayValue, unsigned int, unsigned int)",
-            "sortedarray_new(unsigned int, SortedArrayEqualFunc, SortedArrayCompareFunc)",
-            "sortedarray_get(SortedArray *, unsigned int)"
-        ]
-    },
-    {
-        "hash-string.c": [
-            "string_hash(void *)",
-            "string_nocase_hash(void *)"
-        ]
-    },
-    {
-        "queue.c": [
-            "queue_peek_tail(Queue *)",
-            "queue_pop_head(Queue *)",
-            "queue_free(Queue *)",
-            "queue_push_tail(Queue *, QueueValue)",
-            "queue_push_head(Queue *, QueueValue)",
-            "queue_new()",
-            "queue_peek_head(Queue *)",
-            "queue_is_empty(Queue *)",
-            "queue_pop_tail(Queue *)"
-        ]
-    },
-    {
-        "set.c": [
-            "set_allocate_table(Set *)",
-            "set_enlarge(Set *)",
-            "set_intersection(Set *, Set *)",
-            "set_iter_has_more(SetIterator *)",
-            "set_iter_next(SetIterator *)",
-            "set_union(Set *, Set *)",
-            "set_remove(Set *, SetValue)",
-            "set_query(Set *, SetValue)",
-            "set_to_array(Set *)",
-            "set_iterate(Set *, SetIterator *)",
-            "set_free(Set *)",
-            "set_new(SetHashFunc, SetEqualFunc)",
-            "set_free_entry(Set *, SetEntry *)",
-            "set_insert(Set *, SetValue)",
-            "set_num_entries(Set *)",
-            "set_register_free_function(Set *, SetFreeFunc)"
-        ]
-    },
-    {
-        "trie.c": [
-            "trie_num_entries(Trie *)",
-            "trie_insert_binary(Trie *, unsigned char *, int, TrieValue)",
-            "trie_remove_binary(Trie *, unsigned char *, int)",
-            "trie_new()",
-            "trie_lookup_binary(Trie *, unsigned char *, int)",
-            "trie_find_end(Trie *, char *)",
-            "trie_free_list_push(TrieNode **, TrieNode *)",
-            "trie_free_list_pop(TrieNode **)",
-            "trie_remove(Trie *, char *)",
-            "trie_find_end_binary(Trie *, unsigned char *, int)",
-            "trie_insert(Trie *, char *, TrieValue)",
-            "trie_lookup(Trie *, char *)",
-            "trie_insert_rollback(Trie *, unsigned char *)",
-            "trie_free(Trie *)"
-        ]
-    },
-    {
-        "compare-string.c": [
-            "string_equal(void *, void *)",
-            "string_nocase_compare(void *, void *)",
-            "string_compare(void *, void *)",
-            "string_nocase_equal(void *, void *)"
-        ]
-    },
-    {
-        "hash-pointer.c": [
-            "pointer_hash(void *)"
-        ]
-    },
-    {
-        "compare-pointer.c": [
-            "pointer_compare(void *, void *)",
-            "pointer_equal(void *, void *)"
-        ]
-    },
-    {
-        "avl-tree.c": [
-            "avl_tree_remove_node(AVLTree *, AVLTreeNode *)",
-            "avl_tree_node_parent_side(AVLTreeNode *)",
-            "avl_tree_to_array_add_subtree(AVLTreeNode *, AVLTreeValue *, int *)",
-            "avl_tree_node_balance(AVLTree *, AVLTreeNode *)",
-            "avl_tree_free_subtree(AVLTree *, AVLTreeNode *)",
-            "avl_tree_to_array(AVLTree *)",
-            "avl_tree_node_value(AVLTreeNode *)",
-            "avl_tree_insert(AVLTree *, AVLTreeKey, AVLTreeValue)",
-            "avl_tree_remove(AVLTree *, AVLTreeKey)",
-            "avl_tree_node_key(AVLTreeNode *)",
-            "avl_tree_node_get_replacement(AVLTree *, AVLTreeNode *)",
-            "avl_tree_root_node(AVLTree *)",
-            "avl_tree_lookup_node(AVLTree *, AVLTreeKey)",
-            "avl_tree_lookup(AVLTree *, AVLTreeKey)",
-            "avl_tree_node_replace(AVLTree *, AVLTreeNode *, AVLTreeNode *)",
-            "avl_tree_update_height(AVLTreeNode *)",
-            "avl_tree_node_child(AVLTreeNode *, AVLTreeNodeSide)",
-            "avl_tree_num_entries(AVLTree *)",
-            "avl_tree_free(AVLTree *)",
-            "avl_tree_subtree_height(AVLTreeNode *)",
-            "avl_tree_new(AVLTreeCompareFunc)",
-            "avl_tree_balance_to_root(AVLTree *, AVLTreeNode *)",
-            "avl_tree_rotate(AVLTree *, AVLTreeNode *, AVLTreeNodeSide)",
-            "avl_tree_node_parent(AVLTreeNode *)"
-        ]
-    },
-    {
-        "binary-heap.c": [
-            "binary_heap_new(BinaryHeapType, BinaryHeapCompareFunc)",
-            "binary_heap_free(BinaryHeap *)",
-            "binary_heap_insert(BinaryHeap *, BinaryHeapValue)",
-            "binary_heap_cmp(BinaryHeap *, BinaryHeapValue, BinaryHeapValue)",
-            "binary_heap_num_entries(BinaryHeap *)",
-            "binary_heap_pop(BinaryHeap *)"
-        ]
-    },
-    {
-        "utf8-decoder.c": []
-    },
-    {
-        "compare-int.c": [
-            "int_equal(void *, void *)",
-            "int_compare(void *, void *)"
+        "bst.c": [
+            "_bst_subtree_remove(int, struct bst_node *)",
+            "bst_free(struct bst *)",
+            "_bst_subtree_min_val(struct bst_node *)",
+            "_bst_node_create(int)",
+            "_bst_subtree_insert(int, struct bst_node *)",
+            "bst_insert(int, struct bst *)",
+            "bst_contains(int, struct bst *)",
+            "bst_create()",
+            "bst_remove(int, struct bst *)",
+            "bst_isempty(struct bst *)"
         ]
     }
 ]

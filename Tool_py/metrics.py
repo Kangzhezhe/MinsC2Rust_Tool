@@ -64,7 +64,7 @@ def calculate_asserts_count(output_project_path, results, src_names, test_names,
                 'Dynamic Assert Count': dynamic_assert_dict.get(source, 0)
             })
     
-    print("断言统计已保存到 asserts_count.csv 文件")
+    print("Assertion statistics have been saved to asserts_count.csv file")
     print("\nStatic assert counts:")
     print(static_assert_dict)
     print("\nDynamic assert counts:")
@@ -94,7 +94,7 @@ def calculate_tests_pass_rates(output_project_path, output_dir,results, sorted_f
 
     pass_rates = {source: 1 - rate for source, rate in missing_rates.items()}
 
-    print("测试通过率统计已保存到 tests_pass_rates.csv 文件")
+    print("Test pass rate statistics have been saved to tests_pass_rates.csv file")
     # 打印通过率
     print("\nPass rates:")
     for source, rate in pass_rates.items():
@@ -211,7 +211,7 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
                 'Pass count (without test)': row['Pass count (without test)'],
                 'Total count (without test)': row['Total count (without test)']
             })
-    print("编译通过率统计已保存到 compile_pass_rate.csv 文件")
+    print("Compile pass rate statistics have been saved to compile_pass_rate.csv file")
     print("\nPass rates (with test):")
     for source, rate in missing_rates.items():
         print(f"{source}: {1 - rate:.2%}")
@@ -248,7 +248,7 @@ def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_
         once_pass_rate[test_source_name] = pass_counts / total_tests if total_tests > 0 else 0
         once_pass_counts[test_source_name] = (pass_counts, total_tests)
 
-    print("一次编译通过率统计已保存到 once_pass_rates.csv 文件")
+    print("Once compile pass rate statistics have been saved to once_pass_rates.csv file")
     print("\nPass rates:")
     for source, rate in once_pass_rate.items():
         print(f"{source}: {rate:.2%}")
@@ -352,7 +352,7 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
     })
 
     # 打印输出
-    print("\n数据集统计信息:")
+    print("\nDataset statistics:")
     header = f"{'Source':<15} | {'LOC':>6} | {'Total':>6} | {'Cov':>6} | {'Rust':>6} | {'Funcs':>5} | {'MaxLen':>6} | {'AvgLen':>6}"
     print(header)
     for row in detailed_data:
@@ -374,5 +374,5 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
             row['Mean Fn Len'] = f"{row['Mean Fn Len']:.1f}"
             writer.writerow(row)
 
-    print(f"\n完整统计数据已保存至: {csv_path}")
+    print(f"\nFull statistics have been saved to: {csv_path}")
     return total_loc_all
