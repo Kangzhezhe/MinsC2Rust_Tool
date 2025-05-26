@@ -136,6 +136,7 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
     detailed_data = []  # 用于存储详细数据行
 
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
+        funcs = [f for f in funcs if f != 'main']
         total_funcs = len(funcs)
         total_filtered_funcs = 0
         missing_count = 0
@@ -143,7 +144,7 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
 
         if test_source_name not in results:
             continue
-
+        
         for func_name in funcs:
             if func_name not in flattened_results:
                 missing_count += 1
@@ -379,6 +380,9 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
 
 
 def merge_results(output_dir):
+    import os
+    import pandas as pd
+
     def clean_source_col(df):
         df['Source'] = df['Source'].astype(str).str.replace(r'^test-', '', regex=True)
         return df
@@ -398,31 +402,46 @@ def merge_results(output_dir):
 
     # 合并
     df = loc[['Source', 'Total LOC', 'Func Count']].merge(
-        compile[['Source', 'Pass Rate (with test)']],
+        compile[['Source', 'Pass Rate (without test)','Total count (with test)', 'Total count (without test)']],
         on='Source', how='left'
     ).merge(
-        tests[['Source', 'Pass Rate']],
+        tests[['Source', 'Pass Count']],
         on='Source', how='left'
     ).merge(
         safety[['Source', 'Safe Loc', 'Safe Ref']],
         on='Source', how='left'
     )
 
+    # 计算 Passed 列
+    def calc_passed(row):
+        denom = row['Total count (with test)'] - row['Total count (without test)']
+        if (
+            pd.notnull(row['Pass Count'])
+            and pd.notnull(row['Total count (with test)'])
+            and pd.notnull(row['Total count (without test)'])
+            and denom != 0
+        ):
+            val = row['Pass Count'] / denom
+            return f"{val:.2%}"
+        else:
+            return None
+
+    df['Passed'] = df.apply(calc_passed, axis=1)
+
     # 重命名列
     df = df.rename(columns={
         'Total LOC': 'Loc',
         'Func Count': 'Fns',
-        'Pass Rate (with test)': 'Compiled',
-        'Pass Rate': 'Passed'
+        'Pass Rate (without test)': 'Compiled',
     })
 
     # 删除所有关键列都为空的行
-    df = df.dropna(subset=['Compiled', 'Passed', 'Safe Loc', 'Safe Ref'], how='all')
+    df = df.dropna(subset=['Compiled','Passed', 'Safe Loc', 'Safe Ref'], how='all')
 
     # 确保输出目录存在
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     # 保存结果
-    df.to_csv(output_path, index=False)
+    df[['Source', 'Loc', 'Fns','Compiled', 'Passed', 'Safe Loc', 'Safe Ref']].to_csv(output_path, index=False)
 
     print(f"overall metrics have been saved to: {output_path}")

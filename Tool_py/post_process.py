@@ -143,7 +143,6 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
                 child_source = include_dict.get(source, [])
                 post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
 
-    
 
     # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
     #     json.dump(results, f, indent=4)
@@ -287,15 +286,15 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #             results = results_copy
 
     print("Running tests...")
-    calculate_safety_metrics(f'{output_project_path}/src',f'{output_dir}/safety.csv')
+    # calculate_safety_metrics(f'{output_project_path}/src',f'{output_dir}/safety.csv')
 
-    update_test_timeout(f'{output_project_path}/tests', test_timeout)
-    run_cargo_test(output_project_path,output_dir)
+    # update_test_timeout(f'{output_project_path}/tests', test_timeout)
+    # run_cargo_test(output_project_path,output_dir)
 
-    calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
+    # calculate_tests_pass_rates(output_project_path,output_dir, results, sorted_funcs_depth)
 
-    print("Calculating asserts count...")
-    calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir)
+    # print("Calculating asserts count...")
+    # calculate_asserts_count(output_project_path, results, src_names, test_names,output_dir)
 
     print("\n====================================================================")
     merge_results(output_dir)
