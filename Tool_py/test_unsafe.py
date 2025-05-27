@@ -33,7 +33,7 @@ def calculate_combined_metrics(file_path):
             |&\s*mut\s+\w+      # 可变引用 (&mut T)
             |\b(?:Cell|RefCell|String|str|Vec|Box)\b  # 智能指针类型
         ''', re.VERBOSE),
-        'unsafe': re.compile(r'\*\w+|\b\*(?:const|mut)\b')
+        'unsafe': re.compile(r'\b\*(?:const|mut)\b')
     }
 
     for line in cleaned_lines:
