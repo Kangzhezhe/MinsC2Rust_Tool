@@ -1,0 +1,11 @@
+graphviz
+pycparser
+OpenAI
+tqdm
+ipdb
+aiohttp
+clang==14.0.0
+PyYAML
+zhipuai
+streamlit==1.27
+matplotlib

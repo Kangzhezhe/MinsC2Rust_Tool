@@ -1,0 +1,10 @@
+[package]
+name = "test_project"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+proc-macro2 = { version = "1.0", features = ["span-locations"] }
+serde_json  ="1.0"
