@@ -76,7 +76,12 @@ def ensure_json_format(json_str):
     retry = 0
     while True:
         try:
-            first_brace_index = re.search(r'{', json_str).start()
+            match = re.search(r'{', json_str)
+            if not match:
+                print("json decode failed: 没有找到 '{'，response内容如下：")
+                print(json_str)
+                return {}
+            first_brace_index = match.start()
             json_substr = json_str[first_brace_index:]
             ret = json.loads(json_substr)
             return ret
@@ -96,6 +101,29 @@ def ensure_json_format(json_str):
 # 示例用法
 trajectory_memory = Memory(max_size=10, memory_type="Trajectory")
 
+def record_trajectory(input_dict, response, error_msg, llm_model, trajectory_memory):
+    trajectory_prompt = f"""
+    你是一个代码诊断专家，你之前有一个代码的改错任务，但是你改出来的代码仍然有错误存在，
+    请你简单对比改错前后的代码，描述这一次修改的过程，具体哪个地方的代码前后是怎么改的，报错信息是什么,以便你的之后的改错过程不再犯相同的错误：
+
+    ## 本次改错的输入：
+    {input_dict}
+    ## 本次改错的输出：
+    {response}
+    ## 本次改错的报错信息：
+    {error_msg}
+    
+    请按以下步骤思考：
+    1. 提取这一轮改错前后的完整语句 （如：这一次我修改/插入/删除了XXX语句...）
+    2. 提取这一次的报错信息的关键信息 （如：这一次报错内容是XXX语句，报错内容）
+
+    只返回本次改错过程和报错信息的描述，不要给出下一次修改的建议和分析，避免影响下一次的判断
+    用一段话描述但是不能缺少关键语句的详细信息
+    返回格式为文本格式，不需要包含代码块，只需要包含文字描述即可。
+    """
+    trajectory_response = generate_response(trajectory_prompt, llm_model, temperature=0)
+    trajectory_memory.add(trajectory_response)
+    print(trajectory_memory.get_context())
 
 def post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model="qwen",eval_only=False,test_timeout=60000):
     all_error_funcs_content = defaultdict(dict) 
@@ -162,15 +190,18 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #             if len(failed_tests) == 0:
     #                 continue
     #             all_test_cases = failed_tests.keys()
+    #             initial_failed_count = len(failed_tests)
     #             for test_case in all_test_cases:
     #                 print(f"Processing {source}:{test_case}, remain len(failed_tests): {len(failed_tests)}...")
     #                 if test_case in results_copy[source]:
     #                     test_error = ''
 
+    #                     process_files_refactoring(data_manager, source, all_include_files, include_dict, results_copy, src_names, test_names, funcs_child, output_project_path, llm_model,check=False)
     #                     _, failed_tests = run_tests_and_get_failed_cases(output_project_path, source,funcs_child)
     #                     test_error = failed_tests.get(test_case, '')
     #                     print(test_error)
     #                     retry_count = 0
+    #                     last_successful_results_copy = copy.deepcopy(results_copy)
     #                     while test_error != '' and retry_count < 8: 
     #                         _, child_funs =  data_manager.get_child_context(test_case, results_copy, funcs_child)
     #                         child_funs_list = child_funs.strip(',').split(',')
@@ -241,6 +272,18 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #                         test_error += test_error1
     #                         print(test_error)
 
+    #                         if len(failed_tests) > initial_failed_count:
+    #                             print("改错后failed_tests数量变多，跳过本次修改")
+    #                             retry_count += 1
+    #                             continue
+
+    #                         if test_error1 != '':
+    #                             input_dict = {key: {k: results_copy[key][k] for k in value.keys()} for key, value in response_dict.items()}
+    #                             record_trajectory(input_dict, response+"\n本次迭代出现编译错误，跳过本次修改", test_error1, llm_model, trajectory_memory)
+    #                             print("本次迭代出现编译错误，跳过本次修改")
+    #                             retry_count += 1
+    #                             continue
+
     #                         if test_error == '':
     #                             results_copy = results_copy2
     #                             break
@@ -250,36 +293,21 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     #                         for key, value in response_dict.items():
     #                             input_dict[key] = {k: results_copy[key][k] for k in value.keys()}
 
-    #                         trajectory_prompt = f"""
-    #                         你是一个代码诊断专家，你之前有一个代码的改错任务，但是你改出来的代码仍然有错误存在，
-    #                         请你简单对比改错前后代码，描述这一次修改的过程，具体哪个地方的代码前后是怎么改的，报错信息是什么,以便你的之后的改错过程不再犯相同的错误：
+    #                         record_trajectory(input_dict, response, test_error, llm_model, trajectory_memory)
 
-    #                         ## 本次改错的输入：
-    #                         {input_dict}
-    #                         ## 本次改错的输出：
-    #                         {response}
-    #                         ## 本次改错的报错信息：
-    #                         {test_error}
-                            
-    #                         请按以下步骤思考：
-    #                         1. 提取这一轮改错前后的完整语句 （如：这一次我修改/插入/删除了XXX语句...）
-    #                         2. 提取这一次的报错信息的关键信息 （如：这一次报错内容是XXX语句，报错内容）
-
-    #                         只返回本次改错过程和报错信息的描述，不要给出下一次修改的建议和分析，避免影响下一次的判断
-    #                         用一段话描述但是不能缺少关键语句的详细信息
-    #                         返回格式为文本格式，不需要包含代码块，只需要包含文字描述即可。
-    #                         """
-
-    #                         print(f"len of trajectory_prompt: {len(trajectory_prompt)}")
-    #                         trajectory_response = generate_response(trajectory_prompt, llm_model, temperature=0)
-    #                         trajectory_memory.add(trajectory_response)
-    #                         print(trajectory_memory.get_context())
-
-    #                         results_copy = results_copy2
+    #                         if test_error1 == '':
+    #                            results_copy = results_copy2
 
     #                         retry_count += 1
+                        
+    #                     # 如果所有尝试都失败，回滚到最后一次能编译通过的版本
+    #                     if retry_count >= 8:
+    #                         results_copy = last_successful_results_copy
+    #                         process_files_refactoring(data_manager, source, all_include_files, include_dict, results_copy, src_names, test_names, funcs_child, output_project_path, llm_model,check=False)
 
     #                     trajectory_memory.clear()
+    #                     with open(os.path.join(output_dir, 'results.json'), 'w') as f:
+    #                         json.dump(results_copy, f, indent=4)
     #                     if len(failed_tests) == 0:
     #                         break
                         

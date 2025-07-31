@@ -518,11 +518,21 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         for func_name, depth in funcs.items():
             flattened_sorted_funcs_depth[func_name] = depth
 
-    # for source_name, value in data_src.items():
-        
-    #     union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
-    #     difference = list(set(value)-set(union_list))
+    print("\n==========================\n")
+    print("Following functions are not covered by tests, which will not be transpiled:")
+    for source_name, value in data_src.items():
+        union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
+        difference = list(set(value) - set(union_list))
+        if difference:
+            print(f"Warning: Source file {source_name} has uncovered functions: {difference}")
+        else:
+            print(f"Source file {source_name} all functions are covered by tests")
 
+    print("\n==========================\n")
+
+    # for source_name, value in data_src.items():
+    #     union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
+    #     difference = list(set(value) - set(union_list))
     #     if difference == []:
     #         continue
 
