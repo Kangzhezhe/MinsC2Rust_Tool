@@ -12,5 +12,4 @@ fi
 CONFIG_PATH=$(realpath "$CONFIG_PATH")
 
 cd Tool_py
-python3 ./makejson.py "$CONFIG_PATH"
-python3 ./src/main.py "$CONFIG_PATH"
+python3 ./makejson.py "$CONFIG_PATH" && python3 ./src/main.py "$CONFIG_PATH"

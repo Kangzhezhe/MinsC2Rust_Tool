@@ -3,6 +3,7 @@
 import copy
 from pprint import pprint
 import re
+import subprocess
 from clang.cindex import CursorKind, Index, CompilationDatabase
 from collections import OrderedDict, defaultdict, deque
 import sys
@@ -186,7 +187,6 @@ def read_args(args):
         'ask': (lookup is None)
     }
 
-
 def load_config_file(cfg):
     if cfg['config_filename']:
         with open(cfg['config_filename'], 'r') as yamlfile:
@@ -201,11 +201,31 @@ def keep_arg(x) -> bool:
     return keep_this
 
 
+def get_system_include_paths():
+    cmd = ['gcc', '-E', '-Wp,-v', '-']
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    _, stderr = proc.communicate(input=b'')
+    lines = stderr.decode().splitlines()
+    start = False
+    paths = []
+    for line in lines:
+        if line.strip() == '#include <...> search starts here:':
+            start = True
+            continue
+        if line.strip() == 'End of search list.':
+            break
+        if start:
+            paths.append(line.strip())
+    return paths
+
 def analyze_source_files(cfg):
     print('reading source files...')
+    system_include_paths = get_system_include_paths()
+    system_include_paths = ['-I' + path for path in system_include_paths]
     for cmd in read_compile_commands(cfg['db']):
         index = Index.create()
-        c = [
+
+        c = system_include_paths + [
             x for x in cmd.get('command','').split()
             if keep_arg(x)
         ] + cfg['clang_args']
@@ -215,9 +235,10 @@ def analyze_source_files(cfg):
             print("unable to load input")
 
         for d in tu.diagnostics:
-            if d.severity == d.Error or d.severity == d.Fatal:
+            if d.severity > 3:
                 print(' '.join(c))
                 pprint(('diags', list(map(get_diag_info, tu.diagnostics))))
+                exit(1)
                 return
         show_info(tu.cursor, cfg['excluded_paths'], cfg['excluded_prefixes'])
 
