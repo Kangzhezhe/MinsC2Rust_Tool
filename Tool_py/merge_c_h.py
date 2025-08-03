@@ -124,8 +124,8 @@ def process_files(compile_commands_path, output_dir, excluded_files = {"alloc-te
         key = os.path.splitext(os.path.basename(c_filename))[0]
         if key not in excluded_files:
             include_dict[key] = [f for f in filtered_files if f != key]  # 去掉路径和后缀，并排除与键相同的值
+            
 
-    import ipdb;ipdb.set_trace()
     return include_dict,all_file_paths
 
 if __name__ == '__main__':

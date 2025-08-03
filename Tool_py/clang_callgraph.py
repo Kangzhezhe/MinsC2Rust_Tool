@@ -285,17 +285,21 @@ def get_c_filenames(directory):
     print(c_filenames)
     return c_filenames
 
-def get_c_filepaths(directory_path):
+def get_c_filepaths(directory_path,is_test=False):
     c_filepaths = []
     for root, dirs, files in os.walk(directory_path):
+        abs_root = os.path.abspath(root)
+        if 'Output' in abs_root or 'build' in abs_root :
+            continue
+
         for filename in files:
-            if filename.endswith('.c'):
+            if filename.endswith('.c') and (filename.startswith('test-') is False or is_test):
                 # 使用 os.path.abspath 获取绝对路径
                 abs_path = os.path.abspath(os.path.join(root, filename))
                 c_filepaths.append(abs_path)
     return c_filepaths
 
-def get_c_functions_name(c_path, unprocess_path,compile_commands_path):
+def get_c_functions_name(c_path, unprocess_path,compile_commands_path, is_test=False):
     #找到文件夹下的所有的.c文件
     # filenames = get_c_filenames("/home/mins01/project/c-algorithms/src")
     # #将文件的所有函数合成json格式
@@ -308,7 +312,7 @@ def get_c_functions_name(c_path, unprocess_path,compile_commands_path):
     load_config_file(cfg)
     analyze_source_files(cfg)
     if c_path != '':
-        filepaths =  get_c_filepaths(c_path)
+        filepaths =  get_c_filepaths(c_path,is_test)
     else:
         filepaths =  {f['file'] for f in read_compile_commands(cfg['db']) }
     results = []
@@ -447,6 +451,8 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
     with open('../func_result/new_src_processed.json', 'r') as json_file:
         data_src = json.load(json_file)[0]
+
+    # TODO: include_dirs 转换成源文件依赖关系
 
     
     def get_all_funcs(source_name, include_dirs, data_src, all_funcs):

@@ -54,7 +54,8 @@ if __name__ == "__main__":
         # 获取函数名称
         get_c_functions_name(test_dir, # 函数内容
                             os.path.join(func_result_dir,"new_test.json"), # 函数名称保存
-                            compile_commands_path)
+                            compile_commands_path,
+                            is_test=True) # 编译命令路径
         # 函数名正则化
         output_process_re.process_file_func_name(os.path.join(func_result_dir,"new_test.json"), # 未处理json格式
                                                 os.path.join(func_result_dir,"new_test_processed.json")) # 正则化处理后文件路径
