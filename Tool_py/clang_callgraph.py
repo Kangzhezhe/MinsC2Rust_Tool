@@ -84,18 +84,22 @@ def is_excluded(node, xfiles, xprefs):
 def show_info(node, xfiles, xprefs, cur_fun=None):
     if node.kind == CursorKind.FUNCTION_TEMPLATE:
         if not is_excluded(node, xfiles, xprefs):
-            cur_fun = node
-            FULLNAMES[fully_qualified(cur_fun)].add(
-                fully_qualified_pretty(cur_fun))
-            FILE_FUNCTIONS[node.location.file.name].add(fully_qualified_pretty(cur_fun))
+            # 检查是否是函数定义（不是声明）
+            if node.is_definition():
+                cur_fun = node
+                FULLNAMES[fully_qualified(cur_fun)].add(
+                    fully_qualified_pretty(cur_fun))
+                FILE_FUNCTIONS[node.location.file.name].add(fully_qualified_pretty(cur_fun))
 
     if node.kind == CursorKind.CXX_METHOD or \
             node.kind == CursorKind.FUNCTION_DECL:
         if not is_excluded(node, xfiles, xprefs):
-            cur_fun = node
-            FULLNAMES[fully_qualified(cur_fun)].add(
-                fully_qualified_pretty(cur_fun))
-            FILE_FUNCTIONS[node.location.file.name].add(fully_qualified_pretty(cur_fun))
+            # 检查是否是函数定义（不是声明）
+            if node.is_definition():
+                cur_fun = node
+                FULLNAMES[fully_qualified(cur_fun)].add(
+                    fully_qualified_pretty(cur_fun))
+                FILE_FUNCTIONS[node.location.file.name].add(fully_qualified_pretty(cur_fun))
 
     if node.kind == CursorKind.CALL_EXPR:
         if node.referenced and not is_excluded(node.referenced, xfiles, xprefs):
@@ -285,11 +289,11 @@ def get_c_filenames(directory):
     print(c_filenames)
     return c_filenames
 
-def get_c_filepaths(directory_path,is_test=False):
+def get_c_filepaths(directory_path, is_test=False):
     c_filepaths = []
     for root, dirs, files in os.walk(directory_path):
         abs_root = os.path.abspath(root)
-        if 'Output' in abs_root or 'build' in abs_root :
+        if 'Output' in abs_root or 'build' in abs_root or ('test' in abs_root and not is_test):
             continue
 
         for filename in files:
@@ -297,9 +301,35 @@ def get_c_filepaths(directory_path,is_test=False):
                 # 使用 os.path.abspath 获取绝对路径
                 abs_path = os.path.abspath(os.path.join(root, filename))
                 c_filepaths.append(abs_path)
+    
+    # 添加没有对应.c文件的.h文件
+    # 首先收集所有.c文件的基础名称
+    c_basenames = set()
+    for filepath in c_filepaths:
+        basename = os.path.splitext(os.path.basename(filepath))[0]
+        c_basenames.add(basename)
+    
+    # 检查所有.h文件，添加没有对应.c文件的
+    additional_h_files = []
+    for root, dirs, files in os.walk(directory_path):
+        abs_root = os.path.abspath(root)
+        if 'Output' in abs_root or 'build' in abs_root or ('test' in abs_root and not is_test):
+            continue
+            
+        for filename in files:
+            if filename.endswith('.h'):
+                h_basename = os.path.splitext(filename)[0]
+                # 检查是否有对应的.c文件
+                if h_basename not in c_basenames:
+                    abs_path = os.path.abspath(os.path.join(root, filename))
+                    additional_h_files.append(abs_path)
+    
+    # 将独立的.h文件添加到结果中
+    c_filepaths.extend(additional_h_files)
+    
     return c_filepaths
 
-def get_c_functions_name(c_path, unprocess_path,compile_commands_path, is_test=False):
+def get_c_functions_name(c_path, unprocess_path, compile_commands_path, is_test=False):
     #找到文件夹下的所有的.c文件
     # filenames = get_c_filenames("/home/mins01/project/c-algorithms/src")
     # #将文件的所有函数合成json格式
@@ -312,13 +342,44 @@ def get_c_functions_name(c_path, unprocess_path,compile_commands_path, is_test=F
     load_config_file(cfg)
     analyze_source_files(cfg)
     if c_path != '':
-        filepaths =  get_c_filepaths(c_path,is_test)
+        filepaths = get_c_filepaths(c_path, is_test)
     else:
-        filepaths =  {f['file'] for f in read_compile_commands(cfg['db']) }
+        filepaths = {f['file'] for f in read_compile_commands(cfg['db'])}
+    
     results = []
+    collected_functions = set()
+    
+    # 构建文件基础名到路径的映射
+    filepath_basename_map = {}
     for file in filepaths:
-        functions_list = list(FILE_FUNCTIONS[file])
-        results.append({os.path.basename(file):functions_list})
+        basename = os.path.splitext(os.path.basename(file))[0]
+        filepath_basename_map[basename] = file
+    
+    for file in filepaths:
+        functions_list = list(FILE_FUNCTIONS.get(file, []))
+        
+        # 检查是否有对应的.h文件中的函数定义
+        basename = os.path.splitext(os.path.basename(file))[0]
+        
+        # 查找对应的.h文件
+        for h_file, h_functions in FILE_FUNCTIONS.items():
+            h_basename = os.path.splitext(os.path.basename(h_file))[0]
+            
+            # 如果.h文件的基础名与.c文件相同
+            if h_basename == basename and h_file.endswith('.h'):
+                # 将.h文件中的函数添加到.c文件的函数列表中
+                h_functions_list = list(h_functions)
+                
+                # 去重：只添加.c文件中没有的函数
+                for h_func in h_functions_list:
+                    if h_func not in functions_list:
+                        functions_list.append(h_func)
+                        print(f"添加来自 {os.path.basename(h_file)} 的函数 '{h_func}' 到 {os.path.basename(file)}")
+        
+        if functions_list:  # 只添加有函数的文件
+            results.append({os.path.basename(file): functions_list})
+            collected_functions.update(functions_list)
+    
     # 指定要保存的文件名
     # 使用 json.dump 将数据写入文件
     with open(unprocess_path, 'w') as json_file:
@@ -453,6 +514,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         data_src = json.load(json_file)[0]
 
     # TODO: include_dirs 转换成源文件依赖关系
+    # import ipdb; ipdb.set_trace()
 
     
     def get_all_funcs(source_name, include_dirs, data_src, all_funcs):
@@ -514,10 +576,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
 
-    
-
-    
-
     all_pointer_funcs = set()
     for values in dependencies.values():
         all_pointer_funcs.update(values)
@@ -533,12 +591,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
 
 
-    flattened_funcs_child = {}
-    flattened_funcs_child_without_fn_pointer = {}
-    for source, funcs in result_funcs_child.items():
-        for func_name, children in funcs.items():
-            flattened_funcs_child[func_name] = children
-            flattened_funcs_child_without_fn_pointer[func_name] = [child for child in children if child not in all_pointer_funcs]
     
     flattened_sorted_funcs_depth = {}
     for source, funcs in result_funcs_depth.items():
@@ -546,7 +598,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             flattened_sorted_funcs_depth[func_name] = depth
 
     print("\n==========================\n")
-    print("Following functions are not covered by tests, which will not be transpiled:")
     for source_name, value in data_src.items():
         union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
         difference = list(set(value) - set(union_list))
@@ -557,51 +608,60 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
     print("\n==========================\n")
 
-    # for source_name, value in data_src.items():
-    #     union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
-    #     difference = list(set(value) - set(union_list))
-    #     if difference == []:
-    #         continue
+    for source_name, value in data_src.items():
+        union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
+        difference = list(set(value) - set(union_list))
+        if difference == []:
+            continue
 
-    #     test_source_name = 'unused_' + source_name
+        test_source_name = 'test-uncovered_' + source_name
 
-    #     funcs_depth = {}
-    #     funcs_child = defaultdict(set)
-    #     for func in value:
-    #         matchs = func_match(func)
-    #         for match in matchs:
-    #             if funcs_depth.get(match) is None:
-    #                 funcs_depth[match] = 0
-    #                 # print_callgraph(match)
-    #                 get_func_depth(match, list(),  funcs_depth = funcs_depth)
+        funcs_depth = {}
+        funcs_child = defaultdict(set)
+        for func in value:
+            matchs = func_match(func)
+            for match in matchs:
+                if funcs_depth.get(match) is None:
+                    funcs_depth[match] = 0
+                    # print_callgraph(match)
+                    get_func_depth(match, list(),  funcs_depth = funcs_depth)
 
-    #     for func, depth in funcs_depth.items():
-    #         if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name,data=data_src):
-    #             funcs_child[func] = set()
-    #             for child in CALLGRAPH[func]:
-    #                 if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name,data=data_src):
-    #                     funcs_child[func].add(pretty_print(child)) 
+        for func, depth in funcs_depth.items():
+            if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name,data=data_src):
+                funcs_child[func] = set()
+                for child in CALLGRAPH[func]:
+                    if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name,data=data_src):
+                        funcs_child[func].add(pretty_print(child)) 
         
-    #     funcs_child = {
-    #         extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
-    #         for k, vs in funcs_child.items() if extract_function_names(k)
-    #     }
+        funcs_child = {
+            extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
+            for k, vs in funcs_child.items() if extract_function_names(k)
+        }
 
-    #     for func_name, _ in dependencies.items():
-    #         if func_name in funcs_child:
-    #             funcs_child[func_name] = list(set(funcs_child[func_name]).union(dependencies[func_name]))
+        for func_name, _ in dependencies.items():
+            if func_name in funcs_child:
+                funcs_child[func_name] = list(set(funcs_child[func_name]).union(dependencies[func_name]))
 
-    #     sorted_funcs_depth = analyze_function_calls(funcs_child)
-    #     sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name,data=data_src)}
+        sorted_funcs_depth = analyze_function_calls(funcs_child)
+        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name,data=data_src)}
         
-    #     result_funcs_depth[test_source_name] = sorted_funcs_depth
-    #     result_funcs_child[test_source_name] = funcs_child
+        result_funcs_depth[test_source_name] = sorted_funcs_depth
+        result_funcs_child[test_source_name] = funcs_child
 
-    #     if test_source_name not in include_dirs:
-    #         include_dirs[test_source_name] = []  # 初始化为一个空列表
+        if test_source_name not in include_dirs:
+            include_dirs[test_source_name] = []  # 初始化为一个空列表
 
-    #     if source_name not in include_dirs[test_source_name]:
-    #         include_dirs[test_source_name].append(source_name)
+        if source_name not in include_dirs[test_source_name]:
+            include_dirs[test_source_name].append(source_name)
+
+
+
+    flattened_funcs_child = {}
+    flattened_funcs_child_without_fn_pointer = {}
+    for source, funcs in result_funcs_child.items():
+        for func_name, children in funcs.items():
+            flattened_funcs_child[func_name] = children
+            flattened_funcs_child_without_fn_pointer[func_name] = [child for child in children if child not in all_pointer_funcs]
 
 
     if not has_test:
@@ -624,7 +684,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             # 更新 include_dirs 的依赖列表
             include_dirs[file] = list(current_deps)
 
-
+    
 
 
     all_data = data.copy() 
@@ -643,6 +703,10 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
         excluded_childs_without_fn_pointer = set()
         for child in file_childs:
             all_funcs = all_data.get(child, [])
+            # 特殊处理 uncovered 文件：不排除它们
+            if file.startswith('test-uncovered_'):
+                # 对于 uncovered 文件，保留所有依赖关系
+                continue
             if set(all_funcs).isdisjoint(set(all_childs)):
                 excluded_childs.add(child)
             if set(all_funcs).isdisjoint(set(all_childs_without_fn_pointer)):

@@ -133,17 +133,15 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
         for func_name, value in funcs.items():
             flattened_results[func_name] = value
 
-    detailed_data = []  # 用于存储详细数据行
-
+    # 原始数据存储
+    raw_data = {}
+    
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
         funcs = [f for f in funcs if f != 'main']
         total_funcs = len(funcs)
         total_filtered_funcs = 0
         missing_count = 0
         missing_filtered_count = 0
-
-        if test_source_name not in results:
-            continue
         
         for func_name in funcs:
             if func_name not in flattened_results:
@@ -160,24 +158,63 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
         pass_count_with_test = total_funcs - missing_count
         pass_count_without_test = total_filtered_funcs - missing_filtered_count
 
-        missing_rates[test_source_name] = missing_count / total_funcs if total_funcs > 0 else 0
-        missing_rates_func[test_source_name] = missing_filtered_count / total_filtered_funcs if total_filtered_funcs > 0 else 0
+        # 存储原始数据
+        raw_data[test_source_name] = {
+            'pass_count_with_test': pass_count_with_test,
+            'total_count_with_test': total_funcs,
+            'pass_count_without_test': pass_count_without_test,
+            'total_count_without_test': total_filtered_funcs
+        }
 
-        # 添加详细信息到数据列表
+    # 合并 uncovered 数据
+    merged_data = {}
+    for source, data in raw_data.items():
+        if source.startswith('test-uncovered_'):
+            # 获取对应的主测试文件名
+            main_test = source.replace('test-uncovered_', 'test-')
+            if main_test in raw_data:
+                # 合并到主测试文件
+                if main_test not in merged_data:
+                    merged_data[main_test] = raw_data[main_test].copy()
+                
+                # 数值相加
+                merged_data[main_test]['pass_count_with_test'] += data['pass_count_with_test']
+                merged_data[main_test]['total_count_with_test'] += data['total_count_with_test']
+                merged_data[main_test]['pass_count_without_test'] += data['pass_count_without_test']
+                merged_data[main_test]['total_count_without_test'] += data['total_count_without_test']
+            else:
+                # 如果没有对应的主测试文件，直接添加（去掉 uncovered_ 前缀显示）
+                display_name = source.replace('test-uncovered_', 'test-')
+                merged_data[display_name] = data
+        else:
+            # 非 uncovered 文件
+            if source not in merged_data:
+                merged_data[source] = data
+
+    # 生成最终显示数据
+    detailed_data = []
+    for source, data in merged_data.items():
+        # 计算百分比（用合并后的数值计算）
+        pass_rate_with_test = data['pass_count_with_test'] / data['total_count_with_test'] if data['total_count_with_test'] > 0 else 0
+        pass_rate_without_test = data['pass_count_without_test'] / data['total_count_without_test'] if data['total_count_without_test'] > 0 else 0
+        
+        # 显示名称：去掉 test- 前缀
+        display_source = source.replace('test-', '') if source.startswith('test-') else source
+        
         detailed_data.append({
-            'Source': test_source_name,
-            'Pass Rate (with test)': 1 - missing_rates[test_source_name],
-            'Pass count (with test)': pass_count_with_test,
-            'Total count (with test)': total_funcs,
-            'Pass Rate (without test)': 1 - missing_rates_func[test_source_name],
-            'Pass count (without test)': pass_count_without_test,
-            'Total count (without test)': total_filtered_funcs
+            'Source': display_source,
+            'Pass Rate (with test)': pass_rate_with_test,
+            'Pass count (with test)': data['pass_count_with_test'],
+            'Total count (with test)': data['total_count_with_test'],
+            'Pass Rate (without test)': pass_rate_without_test,
+            'Pass count (without test)': data['pass_count_without_test'],
+            'Total count (without test)': data['total_count_without_test']
         })
 
+    # 计算 Overall（原有逻辑保持不变）
     all_missing_rates = missing_count_all / total_funcs_all if total_funcs_all > 0 else 0
     all_missing_rates_func = missing_filtered_count_all / total_filtered_funcs_all if total_filtered_funcs_all > 0 else 0
 
-    # 添加总体统计
     detailed_data.append({
         'Source': 'Overall',
         'Pass Rate (with test)': 1 - all_missing_rates,
@@ -188,7 +225,7 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
         'Total count (without test)': total_filtered_funcs_all
     })
 
-    # 将详细信息写入 CSV 文件
+    # 保存 CSV 文件
     with open(os.path.join(output_dir, 'compile_pass_rate.csv'), 'w', newline='') as csvfile:
         fieldnames = [
             'Source', 
@@ -212,26 +249,26 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
                 'Pass count (without test)': row['Pass count (without test)'],
                 'Total count (without test)': row['Total count (without test)']
             })
+
+    # 打印输出
     print("Compile pass rate statistics have been saved to compile_pass_rate.csv file")
     print("\nPass rates (with test):")
-    for source, rate in missing_rates.items():
-        print(f"{source}: {1 - rate:.2%}")
+    for row in detailed_data[:-1]:  # 排除 Overall
+        print(f"{row['Source']}: {row['Pass Rate (with test)']:.2%}")
 
     print("\nPass rates for functions (without test):")
-    for source, rate in missing_rates_func.items():
-        print(f"{source}: {1 - rate:.2%}")
+    for row in detailed_data[:-1]:  # 排除 Overall
+        print(f"{row['Source']}: {row['Pass Rate (without test)']:.2%}")
 
     print(f"\nOverall pass rate (with test): {1 - all_missing_rates:.2%}")
     print(f"Overall pass rate for functions (without test): {1 - all_missing_rates_func:.2%}")
-
-
 
 def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names):
     once_pass_rate = {}
     once_pass_counts = {}
     for test_source_name, child_sources in tqdm(include_dict.items()):
-        if test_source_name not in test_names or test_source_name not in once_retry_count_dict:
-            continue
+        # if test_source_name not in test_names or test_source_name not in once_retry_count_dict:
+        #     continue
         
         pass_counts = 0
         fail_counts = 0
@@ -283,24 +320,22 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
     total_loc_all = 0
     loc_all = 0
     rust_loc_all = 0
-    total_func_count = 0  # 新增：总函数计数
-    all_fn_lens = []      # 新增：存储所有函数长度
+    total_func_count = 0
+    all_fn_lens = []
+    source_data = {}
 
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
-        # if test_source_name not in results:
-        #     continue
-
         data_manager.get_include_indices(test_source_name)
         
         total_loc = 0
         loc = 0
         rust_loc = 0
-        fn_lens = []      # 新增：单文件函数长度记录
+        fn_lens = []
 
         # 处理函数部分
         for func in funcs:
             func_content, _, _ = data_manager.get_content(func)
-            fn_len = len(func_content.split('\n'))  # 计算函数长度
+            fn_len = len(func_content.split('\n'))
             fn_lens.append(fn_len)
             
             if data_manager.get_result(func, results):
@@ -320,24 +355,59 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
         max_fn = max(fn_lens) if fn_lens else 0
         mean_fn = sum(fn_lens)/func_count if func_count > 0 else 0
         
-        # 累计全局数据
-        total_func_count += func_count
-        all_fn_lens.extend(fn_lens)
-        total_loc_all += total_loc
-        loc_all += loc
-        rust_loc_all += rust_loc
-
-        # 记录文件数据
-        detailed_data.append({
-            'Source': test_source_name,
+        source_data[test_source_name] = {
             'LOC': loc,
             'Total LOC': total_loc,
-            'LCov': loc / total_loc if total_loc else 0,
             'Rust LOC': rust_loc,
-            'Func Count': func_count,       # 新增字段
-            'Max Fn Len': max_fn,           # 新增字段
-            'Mean Fn Len': mean_fn          # 新增字段
+            'Func Count': func_count,
+            'Max Fn Len': max_fn,
+            'Mean Fn Len': mean_fn,
+            'fn_lens': fn_lens
+        }
+
+    # 合并 uncovered 数据
+    merged_data = {}
+    for source, data in source_data.items():
+        display_source = source
+        if source.startswith('test-uncovered_'):
+            display_source = source.replace('test-uncovered_', '')
+        elif source.startswith('test-'):
+            display_source = source.replace('test-', '')
+        
+        if display_source in merged_data:
+            # 合并数据
+            merged_data[display_source]['LOC'] += data['LOC']
+            merged_data[display_source]['Total LOC'] += data['Total LOC']
+            merged_data[display_source]['Rust LOC'] += data['Rust LOC']
+            merged_data[display_source]['Func Count'] += data['Func Count']
+            merged_data[display_source]['Max Fn Len'] = max(merged_data[display_source]['Max Fn Len'], data['Max Fn Len'])
+            merged_data[display_source]['fn_lens'].extend(data['fn_lens'])
+            # 重新计算平均值
+            all_lens = merged_data[display_source]['fn_lens']
+            merged_data[display_source]['Mean Fn Len'] = sum(all_lens) / len(all_lens) if all_lens else 0
+        else:
+            merged_data[display_source] = data.copy()
+
+    # 生成详细数据
+    for source, data in merged_data.items():
+        lcov = data['LOC'] / data['Total LOC'] if data['Total LOC'] else 0
+        detailed_data.append({
+            'Source': source,
+            'LOC': data['LOC'],
+            'Total LOC': data['Total LOC'],
+            'LCov': lcov,
+            'Rust LOC': data['Rust LOC'],
+            'Func Count': data['Func Count'],
+            'Max Fn Len': data['Max Fn Len'],
+            'Mean Fn Len': data['Mean Fn Len']
         })
+        
+        # 累计全局数据
+        total_func_count += data['Func Count']
+        all_fn_lens.extend(data['fn_lens'])
+        total_loc_all += data['Total LOC']
+        loc_all += data['LOC']
+        rust_loc_all += data['Rust LOC']
 
     # 添加全局统计数据
     overall_lcov = loc_all / total_loc_all if total_loc_all else 0
@@ -371,9 +441,10 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
         ])
         writer.writeheader()
         for row in detailed_data:
-            row['LCov'] = f"{row['LCov']:.1%}"
-            row['Mean Fn Len'] = f"{row['Mean Fn Len']:.1f}"
-            writer.writerow(row)
+            row_copy = row.copy()
+            row_copy['LCov'] = f"{row['LCov']:.1%}"
+            row_copy['Mean Fn Len'] = f"{row['Mean Fn Len']:.1f}"
+            writer.writerow(row_copy)
 
     print(f"\nFull statistics have been saved to: {csv_path}")
     return total_loc_all

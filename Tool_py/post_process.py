@@ -148,28 +148,28 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     
     # return
 
-    # 工程结构重构
-    if not eval_only:
-        all_source_names = set()
-        lib_rs_path = f'{output_project_path}/src/lib.rs'
-        if os.path.exists(lib_rs_path):
-            with open(lib_rs_path, 'r') as f:
-                for line in f:
-                    all_source_names.add(line.strip())
-        for source in results.keys():
-            if source in test_names:
-                _, all_include_files = data_manager.get_include_indices(source)
-                funcs_child = funcs_childs[source]
-                for include_file in all_include_files:
-                    if include_file in src_names and include_file in results:
-                        all_source_names.add(f"pub mod {include_file.replace('-', '_')};")
-                        child_source = include_dict.get(include_file, [])
-                        post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
-                with open(lib_rs_path, 'w') as f:
-                    f.write('\n'.join(all_source_names))
-                    f.write('\n')
-                child_source = include_dict.get(source, [])
-                post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
+    # # 工程结构重构
+    # if not eval_only:
+    #     all_source_names = set()
+    #     lib_rs_path = f'{output_project_path}/src/lib.rs'
+    #     if os.path.exists(lib_rs_path):
+    #         with open(lib_rs_path, 'r') as f:
+    #             for line in f:
+    #                 all_source_names.add(line.strip())
+    #     for source in results.keys():
+    #         if source in test_names:
+    #             _, all_include_files = data_manager.get_include_indices(source)
+    #             funcs_child = funcs_childs[source]
+    #             for include_file in all_include_files:
+    #                 if include_file in src_names and include_file in results:
+    #                     all_source_names.add(f"pub mod {include_file.replace('-', '_')};")
+    #                     child_source = include_dict.get(include_file, [])
+    #                     post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
+    #             with open(lib_rs_path, 'w') as f:
+    #                 f.write('\n'.join(all_source_names))
+    #                 f.write('\n')
+    #             child_source = include_dict.get(source, [])
+    #             post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
 
 
     # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
@@ -508,6 +508,18 @@ if __name__ == "__main__":
 
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
     logger = logger_init(os.path.join(output_dir,'app.log'))
+    # 添加 uncovered 测试处理逻辑
+    uncovered_test_names = []
+    for key in include_dict.keys():
+        if key.startswith('test-uncovered_'):
+            # 提取对应的源文件名
+            source_file = key.replace('test-uncovered_', '')
+            # 只有当对应的源文件不在排除列表中时，才添加 uncovered 测试
+            if source_file not in excluded_files:
+                uncovered_test_names.append(key)
+
+    # 将 uncovered 测试名称添加到 test_names 中
+    test_names.extend(uncovered_test_names)
 
 
     if not has_test:
@@ -545,6 +557,8 @@ if __name__ == "__main__":
     for f in source_path:
         with open(f, 'r') as file:
             data.append(json.load(file))
+
+    source_names.extend(uncovered_test_names)
  
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test) 
 

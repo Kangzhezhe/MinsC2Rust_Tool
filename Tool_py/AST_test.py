@@ -105,8 +105,17 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
         data = json.load(f)
     for item in data :
         for file_name,funcs in item.items():
-            # 文件路径,目前针对arraylist
-            filename = f"{read_c_path}/{file_name}.c"
+            # 判断文件类型并确定路径
+            if file_name.startswith('test-'):
+                # 测试文件：从test目录读取，保存到test_json
+                filename = f"{read_c_path.replace('/src', '/test')}/{file_name}.c"
+                output_json_path = save_json_path.replace('src_json', 'test_json')
+            else:
+                # 源文件：从src目录读取，保存到src_json
+                filename = f"{read_c_path.replace('/test', '/src')}/{file_name}.c"
+                output_json_path =  save_json_path.replace('test_json', 'src_json')
+
+
             output_filename = "function_context.txt"
             # 解析文件
             ast = parse_c_file(filename)
@@ -157,8 +166,8 @@ def  content_extract(func_json_path, read_c_path, save_json_path):
             details = extract_info_from_c_file(filename)
             result["extra"] = f"{details} extract_info: [{result['extra']}]"
             # 使用 json.dump 将数据写入文件
-            os.makedirs(save_json_path, exist_ok=True)
-            output_file = f'{save_json_path}/{file_name}.json'
+            os.makedirs(output_json_path, exist_ok=True)
+            output_file = f'{output_json_path}/{file_name}.json'
             with open(output_file, 'w') as json_file:
                 json.dump(result, json_file, indent=4)
 

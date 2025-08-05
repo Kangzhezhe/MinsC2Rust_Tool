@@ -32,6 +32,7 @@ total_error_count = 0
 
 def process_func(test_source_name, func_name, depth, start_time, source_names, funcs_childs, data_manager, results, logger, llm_model, tmp_dir,  all_error_funcs_content, once_retry_count_dict,funcs,lock,params):
     global total_retry_count, total_regenerate_count, total_error_count
+    
 
     tmp_dir = os.path.join(tmp_dir, test_source_name+'_'+func_name)
     os.makedirs(tmp_dir, exist_ok=True)
@@ -492,7 +493,6 @@ def process_test_source_name(test_source_name, funcs, source_names, funcs_childs
     local_all_error_funcs_content = {key: copy.deepcopy(value) for key, value in shared_all_error_funcs_content.items() if key in data_manager.all_include_files}
     local_once_retry_count_dict = {key: copy.deepcopy(value) for key, value in shared_once_retry_count_dict.items() if key in data_manager.all_include_files}
     
-
     with tqdm(funcs.items(), desc=f"{test_source_name}") as pbar:
         for func_name, depth in pbar:
             pbar.set_postfix(func_name=func_name) 
@@ -710,8 +710,22 @@ async def main():
         for test_name in test_names:
             include_dict[test_name]=src_names
 
+    
+
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
     logger = logger_init(os.path.join(output_dir,'app.log'))
+
+    uncovered_test_names = []
+    for key in include_dict.keys():
+        if key.startswith('test-uncovered_'):
+            # 提取对应的源文件名
+            source_file = key.replace('test-uncovered_', '')
+            # 只有当对应的源文件不在排除列表中时，才添加 uncovered 测试
+            if source_file not in excluded_files:
+                uncovered_test_names.append(key)
+
+    # 将 uncovered 测试名称添加到 test_names 中
+    test_names.extend(uncovered_test_names)
 
     if not has_test:
         for test_name in test_names:
@@ -760,6 +774,8 @@ async def main():
     for f in source_path:
         with open(f, 'r') as file:
             data.append(json.load(file))
+
+    source_names.extend(uncovered_test_names)
 
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test)   
 

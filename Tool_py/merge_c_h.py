@@ -95,14 +95,20 @@ def process_files(compile_commands_path, output_dir, excluded_files = {"alloc-te
     # 存储每个 .c 文件及其包含的 .h 文件的字典
     include_dict = {}
     all_file_paths = []
+    processed_c_files = set()  # 记录已处理的.c文件基础名称
+
+    # 收集所有包含目录
+    all_include_dirs = set()
+    for entry in compile_commands:
+        include_dirs = {arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')}
+        all_include_dirs.update(include_dirs)
 
     # 处理每个 .c 文件
     for entry in compile_commands:
         c_filename = entry['file']
-        # 确定输出文件的子目录
-        if 'src' in c_filename:
-            sub_dir = 'src'
-        elif 'test' in c_filename:
+        
+        # 确定输出文件的子目录：只有以'test-'开头的文件才放入test目录
+        if os.path.basename(c_filename).startswith('test-'):
             sub_dir = 'test'
         else:
             sub_dir = 'src'
@@ -116,17 +122,69 @@ def process_files(compile_commands_path, output_dir, excluded_files = {"alloc-te
         include_dirs = {arg[2:] for arg in entry.get('command','').split() if arg.startswith('-I')}
 
         # 合并文件内容并保存到输出文件
-        
         included_files = merge_files(c_filename, output_filename, include_dirs)
+        
         if output_filename not in all_file_paths:
             all_file_paths.append(output_filename)
+        
         filtered_files = [f for f in included_files if f not in excluded_files]
         key = os.path.splitext(os.path.basename(c_filename))[0]
+        
         if key not in excluded_files:
-            include_dict[key] = [f for f in filtered_files if f != key]  # 去掉路径和后缀，并排除与键相同的值
-            
+            include_dict[key] = [f for f in filtered_files if f != key]
+            processed_c_files.add(key)  # 记录已处理的.c文件基础名称
 
-    return include_dict,all_file_paths
+    # 处理独立的.h文件（没有对应.c文件的头文件）
+    standalone_h_files = []
+
+    for include_dir in all_include_dirs:
+        if os.path.exists(include_dir):
+            for root, dirs, files in os.walk(include_dir):
+                for filename in files:
+                    if filename.endswith('.h'):
+                        h_basename = os.path.splitext(filename)[0]
+                        
+                        # 检查是否有对应的.c文件已经被处理
+                        if h_basename not in processed_c_files and h_basename not in excluded_files:
+                            h_filepath = os.path.join(root, filename)
+                            
+                            # 避免重复处理同名的头文件
+                            if h_basename not in [os.path.splitext(os.path.basename(f))[0] for f in standalone_h_files]:
+                                standalone_h_files.append(h_filepath)
+
+    # 处理独立的.h文件
+    for h_filepath in standalone_h_files:
+        try:
+            filename = os.path.basename(h_filepath)
+            h_basename = os.path.splitext(filename)[0]
+            
+            # 确定输出子目录：只有以'test-'开头的文件才放入test目录
+            if filename.startswith('test-'):
+                sub_dir = 'test'
+            else:
+                sub_dir = 'src'
+            
+            output_sub_dir = os.path.join(output_dir, sub_dir)
+            os.makedirs(output_sub_dir, exist_ok=True)
+            
+            # 创建对应的输出文件名，将.h改为.c
+            output_h_filename = os.path.join(output_sub_dir, h_basename + '.c')
+            
+            # 处理独立的.h文件
+            included_files = merge_files(h_filepath, output_h_filename, all_include_dirs)
+            
+            if output_h_filename not in all_file_paths:
+                all_file_paths.append(output_h_filename)
+            
+            filtered_files = [f for f in included_files if f not in excluded_files]
+            include_dict[h_basename] = [f for f in filtered_files if f != h_basename]
+            
+            print(f"Processed standalone header: {h_filepath} -> {output_h_filename}")
+            
+        except Exception as e:
+            print(f"Warning: Could not process {h_filepath}: {e}")
+
+    return include_dict, all_file_paths
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
