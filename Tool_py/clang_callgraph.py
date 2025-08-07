@@ -128,7 +128,7 @@ def generate_dot(fun_name, so_far, depth=0, dot=None):
             if pretty_print(f) in so_far:
                 continue
             so_far.append(pretty_print(f))
-            print('  ' * (depth + 1) + pretty_print(f))
+            # print('  ' * (depth + 1) + pretty_print(f))
             dot.node(pretty_print(f), pretty_print(f))
             dot.edge(fun_name, pretty_print(f))
             if fully_qualified_pretty(f) in CALLGRAPH:
@@ -247,17 +247,18 @@ def analyze_source_files(cfg):
         show_info(tu.cursor, cfg['excluded_paths'], cfg['excluded_prefixes'])
 
 
+
 def print_callgraph(fun):
     if fun in CALLGRAPH:
-        print(fun)
+        # print(fun)
         dot = generate_dot(fun, list())
         # dot.render('callgraph', format='png', cleanup=True)
     else:
         print('matching:')
-        for f, ff in FULLNAMES.items():
-            if f.startswith(fun):
-                for fff in ff:
-                    print(fff)
+        # for f, ff in FULLNAMES.items():
+        #     if f.startswith(fun):
+        #         for fff in ff:
+        #             print(fff)
 
 def func_match(fun):
     fs = []
@@ -374,7 +375,7 @@ def get_c_functions_name(c_path, unprocess_path, compile_commands_path, is_test=
                 for h_func in h_functions_list:
                     if h_func not in functions_list:
                         functions_list.append(h_func)
-                        print(f"添加来自 {os.path.basename(h_file)} 的函数 '{h_func}' 到 {os.path.basename(file)}")
+                        # print(f"添加来自 {os.path.basename(h_file)} 的函数 '{h_func}' 到 {os.path.basename(file)}")
         
         if functions_list:  # 只添加有函数的文件
             results.append({os.path.basename(file): functions_list})
@@ -385,24 +386,44 @@ def get_c_functions_name(c_path, unprocess_path, compile_commands_path, is_test=
     with open(unprocess_path, 'w') as json_file:
         json.dump(results, json_file, indent=4)
 
-def get_func_depth(fun_name, so_far, depth=0, funcs_depth = {}):
+def get_func_depth(fun_name, so_far, depth=0, funcs_depth={}, visited=None):
+    if visited is None:
+        visited = set()
+    
     if depth >= 15:
         return 
+    
+    # 检查是否已经访问过
+    if fun_name in visited:
+        return
+    
+    visited.add(fun_name)
+    
     if fun_name in CALLGRAPH:
         for f in CALLGRAPH[fun_name]:
-            if pretty_print(f) in so_far:
+            child_name = pretty_print(f)
+            
+            # 检查循环引用
+            if child_name in so_far:
                 continue
-            so_far.append(pretty_print(f))
-            print('  ' * (depth + 1) + pretty_print(f))
-            if funcs_depth.get(pretty_print(f)) is None:
-                funcs_depth[pretty_print(f)] = depth+1
-            else :
-                if funcs_depth[pretty_print(f)] < depth+1:
-                    funcs_depth[pretty_print(f)] = depth+1
-            if fully_qualified_pretty(f) in CALLGRAPH:
-                get_func_depth(fully_qualified_pretty(f), list(), depth + 1,funcs_depth)
+                
+            so_far.append(child_name)
+            print('  ' * (depth + 1) + child_name)
+            
+            # 更新深度
+            if funcs_depth.get(child_name) is None:
+                funcs_depth[child_name] = depth + 1
             else:
-                get_func_depth(fully_qualified(f), list(), depth + 1,funcs_depth)
+                if funcs_depth[child_name] < depth + 1:
+                    funcs_depth[child_name] = depth + 1
+            
+            # 递归调用
+            if fully_qualified_pretty(f) in CALLGRAPH:
+                get_func_depth(fully_qualified_pretty(f), so_far, depth + 1, funcs_depth, visited)
+            else:
+                get_func_depth(fully_qualified(f), so_far, depth + 1, funcs_depth, visited)
+            
+            so_far.pop()
 
 pattern_func = re.compile(r'^(\w+)\(.*\)$')
 pattern_file = re.compile(r'^(.+)\.\w+$')
@@ -496,26 +517,144 @@ def analyze_function_calls(funcs_childs):
     result = ensure_ordered_depth(ordered_depth)
 
     return result
+
+def build_module_dependencies_from_callgraph(include_dirs):
+    """
+    基于函数调用关系构建模块间的依赖关系，作为include_dirs的补充
+    遍历每个模块的函数，检查子函数是否在include依赖范围内，不在则添加依赖
+    测试模块不作为被依赖项
+    """
+    # 构建文件名到模块名的映射
+    module_functions = defaultdict(set)
     
-def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None,has_test=True):
-    if len(sys.argv) < 2:
-        print('usage: ' + sys.argv[0] +
-              '[extra clang args...]')
-        return
-    cfg = read_args(sys.argv)
-    cfg['db'] = compile_commands_path
-    load_config_file(cfg)
-    analyze_source_files(cfg)
+    for file_path, functions in FILE_FUNCTIONS.items():
+        # 提取模块名（去掉路径和扩展名）
+        module_name = os.path.splitext(os.path.basename(file_path))[0]
+        # 存储每个模块的函数列表
+        module_functions[module_name].update(functions)
+    
+    # 构建函数完整签名到所有可能模块的映射（处理同名同签名函数）
+    function_signature_to_modules = defaultdict(list)
+    for file_path, functions in FILE_FUNCTIONS.items():
+        module_name = os.path.splitext(os.path.basename(file_path))[0]
+        for func in functions:
+            function_signature_to_modules[func].append(module_name)
+    
+    # 构建简单的函数名到所有可能模块的映射（处理同名函数）
+    function_name_to_modules = defaultdict(list)
+    for module, functions in module_functions.items():
+        for func in functions:
+            func_name = extract_function_names(func)
+            if func_name:
+                function_name_to_modules[func_name].append(module)
+    
+    # 获取模块可访问的所有函数（包括通过include间接访问的）
+    def get_accessible_functions(module_name):
+        accessible_funcs = set()
+        visited = set()
+        
+        def dfs(current_module):
+            if current_module in visited:
+                return
+            visited.add(current_module)
+            
+            # 添加当前模块的函数
+            for func in module_functions.get(current_module, []):
+                func_name = extract_function_names(func)
+                if func_name:
+                    accessible_funcs.add(func_name)
+            
+            # 递归添加include依赖模块的函数
+            for included_module in include_dirs.get(current_module, []):
+                dfs(included_module)
+        
+        dfs(module_name)
+        return accessible_funcs
+    
+    # 为每个模块构建可访问函数集合
+    module_accessible_functions = {}
+    for module_name in include_dirs.keys():
+        module_accessible_functions[module_name] = get_accessible_functions(module_name)
+    
+    # 基于调用关系构建模块依赖
+    enhanced_include_dirs = copy.deepcopy(include_dirs)
+    
+    # *** 关键修改：遍历CALLGRAPH而不是模块函数 ***
+    for caller_func_signature, called_funcs in CALLGRAPH.items():
+        # 确定调用者函数所属的模块列表
+        caller_modules = function_signature_to_modules.get(caller_func_signature, [])
+        if not caller_modules:
+            continue
+        
+        caller_func_name = extract_function_names(caller_func_signature)
+        if not caller_func_name:
+            continue
+        
+        # 对每个可能的调用者模块进行处理
+        for caller_module in caller_modules:
+            if caller_module not in include_dirs:
+                continue
+                
+            # 获取调用者模块可访问的函数
+            accessible_funcs = module_accessible_functions.get(caller_module, set())
+            
+            # 遍历被调用的函数
+            for called_func_cursor in called_funcs:
+                called_func_name = pretty_print(called_func_cursor)
+                called_func_simple = extract_function_names(called_func_name)
+                
+                if not called_func_simple:
+                    continue
+                
+                # *** 关键修改：检查子函数是否在当前模块的可访问函数范围内 ***
+                if called_func_simple in accessible_funcs:
+                    # 函数在可访问范围内，不需要添加新的依赖
+                    continue
+                
+                # *** 关键修改：在全局范围内找到子函数对应的模块，考虑同名函数 ***
+                target_module = None
+                
+                # 获取所有可能包含该函数的模块
+                possible_modules = function_name_to_modules.get(called_func_simple, [])
+                
+                # 如果只有一个模块包含该函数，直接使用
+                if len(possible_modules) == 1:
+                    target_module = possible_modules[0]
+                elif len(possible_modules) > 1:
+                    # 如果有多个模块包含同名函数，优先选择非测试模块
+                    non_test_modules = [m for m in possible_modules if not m.startswith('test-')]
+                    if non_test_modules:
+                        # 如果有非测试模块，选择第一个非测试模块
+                        target_module = non_test_modules[0]
+                    else:
+                        # 如果都是测试模块，跳过（测试模块不作为被依赖项）
+                        continue
+                
+                if target_module and target_module != caller_module:
+                    # 测试模块不作为被依赖项
+                    if target_module.startswith('test-'):
+                        continue
+                    
+                    # 添加依赖关系
+                    if target_module not in enhanced_include_dirs[caller_module]:
+                        enhanced_include_dirs[caller_module].append(target_module)
+                        print(f"添加依赖: {caller_module} -> {target_module} (因为函数 {caller_func_name} 调用了 {called_func_simple})")
+    
+    return enhanced_include_dirs
 
-    with open('../func_result/new_test_processed.json', 'r') as json_file:
-        data = json.load(json_file)[0]
-
-    with open('../func_result/new_src_processed.json', 'r') as json_file:
-        data_src = json.load(json_file)[0]
-
-    # TODO: include_dirs 转换成源文件依赖关系
-    # import ipdb; ipdb.set_trace()
-
+def process_test_and_uncovered_functions(data, data_src, include_dirs, all_file_paths):
+    """
+    处理测试函数和未覆盖函数的依赖关系
+    
+    Args:
+        data: 测试文件的函数数据
+        data_src: 源文件的函数数据  
+        include_dirs: 包含目录依赖关系
+        all_file_paths: 所有文件路径列表
+        
+    Returns:
+        tuple: (result_funcs_depth, result_funcs_child, all_pointer_funcs, updated_include_dirs)
+    """
     
     def get_all_funcs(source_name, include_dirs, data_src, all_funcs):
         child_source = include_dirs.get(source_name, [])
@@ -538,6 +677,7 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
     all_file_paths = [os.path.abspath(file) for file in all_file_paths if file.endswith('.c')]
     dependencies = get_global_function_pointer_dependencies(all_file_paths)
 
+    # 处理测试文件
     for source_name, value in data.items():
         funcs_depth = {}
         funcs_child = defaultdict(set)
@@ -546,20 +686,20 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             for match in matchs:
                 if funcs_depth.get(match) is None:
                     funcs_depth[match] = 0
-                    # print_callgraph(match)
-                    get_func_depth(match, list(),  funcs_depth = funcs_depth)
+                    get_func_depth(match, [], funcs_depth=funcs_depth)  # 使用空列表而不是 list()
 
+        # 特殊处理 test-utf8-decoder
         if source_name == 'test-utf8-decoder':
             result_funcs_depth[source_name] = {'test_decode_chinese': 0}
             result_funcs_child[source_name] = {'test_decode_chinese': []}
             continue
 
         for func, depth in funcs_depth.items():
-            if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name):
+            if extract_function_names(func) and func_avaliabe(extract_function_names(func), source_name):
                 funcs_child[func] = set()
                 for child in CALLGRAPH[func]:
-                    if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name):
-                        funcs_child[func].add(pretty_print(child)) 
+                    if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)), source_name):
+                        funcs_child[func].add(pretty_print(child))
         
         funcs_child = {
             extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
@@ -571,32 +711,31 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                 funcs_child[func_name] = list(set(funcs_child[func_name]).union(dependencies[func_name]))
 
         sorted_funcs_depth = analyze_function_calls(funcs_child)
-        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name)}
+        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k), source_name)}
         
         result_funcs_depth[source_name] = sorted_funcs_depth
         result_funcs_child[source_name] = funcs_child
 
+    # 处理函数指针
     all_pointer_funcs = set()
     for values in dependencies.values():
         all_pointer_funcs.update(values)
 
-
     for pointer in list(all_pointer_funcs): 
         file_cnt = 0
-        for k,v in result_funcs_depth.items():
+        for k, v in result_funcs_depth.items():
             if pointer in v:
                 file_cnt += 1
         if file_cnt <= 1:
             all_pointer_funcs.remove(pointer)
 
-
-
-    
+    # 展平函数深度信息
     flattened_sorted_funcs_depth = {}
     for source, funcs in result_funcs_depth.items():
         for func_name, depth in funcs.items():
             flattened_sorted_funcs_depth[func_name] = depth
 
+    # 检查源文件覆盖情况
     print("\n==========================\n")
     for source_name, value in data_src.items():
         union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
@@ -608,6 +747,9 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
     print("\n==========================\n")
 
+    # 处理未覆盖的函数
+    updated_include_dirs = copy.deepcopy(include_dirs)
+    
     for source_name, value in data_src.items():
         union_list = find_elements(value, list(flattened_sorted_funcs_depth.keys()))
         difference = list(set(value) - set(union_list))
@@ -623,15 +765,14 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
             for match in matchs:
                 if funcs_depth.get(match) is None:
                     funcs_depth[match] = 0
-                    # print_callgraph(match)
-                    get_func_depth(match, list(),  funcs_depth = funcs_depth)
+                    get_func_depth(match, [], funcs_depth=funcs_depth)
 
         for func, depth in funcs_depth.items():
-            if extract_function_names(func) and func_avaliabe(extract_function_names(func),source_name,data=data_src):
+            if extract_function_names(func) and func_avaliabe(extract_function_names(func), source_name, data=data_src):
                 funcs_child[func] = set()
                 for child in CALLGRAPH[func]:
-                    if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)),source_name,data=data_src):
-                        funcs_child[func].add(pretty_print(child)) 
+                    if extract_function_names(pretty_print(child)) and func_avaliabe(extract_function_names(pretty_print(child)), source_name, data=data_src):
+                        funcs_child[func].add(pretty_print(child))
         
         funcs_child = {
             extract_function_names(k): [extract_function_names(v) for v in vs if extract_function_names(v)]
@@ -643,18 +784,46 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
                 funcs_child[func_name] = list(set(funcs_child[func_name]).union(dependencies[func_name]))
 
         sorted_funcs_depth = analyze_function_calls(funcs_child)
-        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k),source_name,data=data_src)}
+        sorted_funcs_depth = {(k): v for k, v in sorted_funcs_depth.items() if (k) and func_avaliabe((k), source_name, data=data_src)}
         
         result_funcs_depth[test_source_name] = sorted_funcs_depth
         result_funcs_child[test_source_name] = funcs_child
 
-        if test_source_name not in include_dirs:
-            include_dirs[test_source_name] = []  # 初始化为一个空列表
+        if test_source_name not in updated_include_dirs:
+            updated_include_dirs[test_source_name] = []
 
-        if source_name not in include_dirs[test_source_name]:
-            include_dirs[test_source_name].append(source_name)
+        if source_name not in updated_include_dirs[test_source_name]:
+            updated_include_dirs[test_source_name].append(source_name)
+
+    return result_funcs_depth, result_funcs_child, all_pointer_funcs, updated_include_dirs
+
+def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = None,has_test=True):
+    if len(sys.argv) < 2:
+        print('usage: ' + sys.argv[0] +
+              '[extra clang args...]')
+        return
+    cfg = read_args(sys.argv)
+    cfg['db'] = compile_commands_path
+    load_config_file(cfg)
+    analyze_source_files(cfg)
+
+    with open('../func_result/new_test_processed.json', 'r') as json_file:
+        data = json.load(json_file)[0]
+
+    with open('../func_result/new_src_processed.json', 'r') as json_file:
+        data_src = json.load(json_file)[0]
 
 
+    result_funcs_depth, result_funcs_child, all_pointer_funcs, include_dirs = process_test_and_uncovered_functions(
+        data, data_src, include_dirs, all_file_paths
+    )
+
+    # TODO: include_dirs 转换成源文件依赖关系
+    # import ipdb; ipdb.set_trace()
+    # module_dependencies = build_module_dependencies_from_callgraph(include_dirs)
+    # result_funcs_depth, result_funcs_child, all_pointer_funcs, include_dirs = process_test_and_uncovered_functions(
+    #     data, data_src, module_dependencies, all_file_paths
+    # )
 
     flattened_funcs_child = {}
     flattened_funcs_child_without_fn_pointer = {}
@@ -686,7 +855,6 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
     
 
-
     all_data = data.copy() 
     all_data.update(data_src)
     include_dirs_without_fn_pointer = copy.deepcopy(include_dirs)
@@ -714,11 +882,15 @@ def clang_callgraph(compile_commands_path ,include_dirs = None,all_file_paths = 
 
         include_dirs[file] = [child for child in file_childs if child not in excluded_childs]
         include_dirs_without_fn_pointer[file] = [child for child in file_childs if child not in excluded_childs_without_fn_pointer]
+
+
+
                
     # if cfg['lookup']:
     #     print_callgraph(cfg['lookup'])
     # if cfg['ask']:
     #     ask_and_print_callgraph()
+    # import ipdb; ipdb.set_trace()
     
     return result_funcs_depth,result_funcs_child,include_dirs,include_dirs_without_fn_pointer,all_pointer_funcs
 if __name__ == '__main__':

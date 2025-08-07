@@ -57,6 +57,7 @@ if __name__ == "__main__":
                             compile_commands_path,
                             is_test=True) # 编译命令路径
         # 函数名正则化
+        
         output_process_re.process_file_func_name(os.path.join(func_result_dir,"new_test.json"), # 未处理json格式
                                                 os.path.join(func_result_dir,"new_test_processed.json")) # 正则化处理后文件路径
 
@@ -90,3 +91,31 @@ if __name__ == "__main__":
         content_extract(os.path.join(func_result_dir,'new_test_processed.json'), # 函数名称
                     os.path.join(tmp_dir,"src"), # 函数内容
                     os.path.join(tmp_dir,"test_json"))   # 函数分割保存
+
+
+    with open(os.path.join(func_result_dir, 'new_test_processed.json'), 'r') as f:
+        test_data = json.load(f)[0]
+    
+    with open(os.path.join(func_result_dir, 'new_src_processed.json'), 'r') as f:
+        src_data = json.load(f)[0]
+    
+    # 分离测试文件和源文件
+    actual_test_files = {}
+    actual_src_files = {}
+    
+    # 从test_processed中分离
+    for file_name, functions in test_data.items():
+        if file_name.startswith('test-'):
+            actual_test_files[file_name] = functions
+        else:
+            actual_src_files[file_name] = functions
+    
+    # 合并到src_data中
+    src_data.update(actual_src_files)
+    
+    # 重新写入文件
+    with open(os.path.join(func_result_dir, 'new_test_processed.json'), 'w') as f:
+        json.dump([actual_test_files], f, indent=4)
+    
+    with open(os.path.join(func_result_dir, 'new_src_processed.json'), 'w') as f:
+        json.dump([src_data], f, indent=4)

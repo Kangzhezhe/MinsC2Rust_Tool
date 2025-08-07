@@ -28,6 +28,3 @@ def process_file_func_name(json_path, processed_json_path):
     # json.dump 将数据写入文件
     with open(processed_json_path, 'w') as json_file:
         json.dump(result, json_file, indent=4)
-
-# if __name__ == "__main__":
-#     process_file_func_name()

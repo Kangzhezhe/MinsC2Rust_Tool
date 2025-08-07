@@ -7,8 +7,8 @@ from models.claude import get_response_claude
 from models.gpt import get_response_gpt4o
 from utils import extract_rust_code
 
-def generate_response(prompt,llm_model='qwen',temperature=0.0,response_format='text'):
-    if len(prompt) > 25000:
+def generate_response(prompt,llm_model='qwen',temperature=0.0,response_format='text',max_prompt_length=30000):
+    if len(prompt) > max_prompt_length:
         return "上下文长度超过限制"
     if llm_model == "local":
         response = asyncio.run(get_response_from_model(prompt))

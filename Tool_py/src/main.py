@@ -77,6 +77,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     
     child_context_prompt, child_funs_prompt_list = data_manager.get_child_context(func_name, results, funcs_child, prompt_limit=10000-len(target_str)-len(source_context))
     child_funs_prompt_list = child_funs_prompt_list.strip(',').split(',')
+    
 
     if params['enable_english_prompt']:
         prompt = get_rust_function_conversion_prompt_english(child_funs_c, child_funs, child_context_prompt, target_str,source_context)
@@ -84,6 +85,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         prompt = get_rust_function_conversion_prompt(child_funs_c, child_funs, child_context_prompt, target_str,source_context,pointer_functions)
 
     logger.info(f"################################################################################################## Processing func: {func_name}")
+    debug(f"child_funs_prompt_list: {child_funs_prompt_list}")
     logger.info(f'child_funs_list: {child_funs_list}, child_funs_c_list: {child_funs_c_list}')
     if len(child_funs_c_list)>12:
         if source_name not in all_error_funcs_content:
@@ -91,21 +93,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         all_error_funcs_content[source_name][func_name] =   '//同时处理的函数过多，无法处理 :' + str(len(child_funs_c_list))
         shutil.rmtree(tmp_dir)
         return
-    debug(f"Prompt length: {len(prompt)}")
-    response = generate_response(prompt, llm_model)
-
-    if response == "上下文长度超过限制":
-        if source_name not in all_error_funcs_content:
-            all_error_funcs_content[source_name] = {}
-        all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
-        shutil.rmtree(tmp_dir)
-        return
-    debug(response)
-    text_remove = response.replace("```rust", "").replace("```", "")
 
     
-    max_retries = min(5+depth*2, params['max_retries'])
-    template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
+
+    
+    max_retries = min(7+depth*2, params['max_retries'])
     compile_error1 = ''
     max_history_length = params['max_history_length']
     max_history_limit_tokens = params['max_history_limit_tokens']
@@ -120,10 +112,29 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
     if test_source_name == 'test-tinyexpr':
         max_regenerations -= 2
         max_retries = min(2+depth, 12)
-    
     error_funcs = find_elements(child_funs_c_list,all_error_funcs_content.get(source_name,[]))
     max_regenerations -= len(error_funcs)
     max_retries -= len(error_funcs) * 2
+
+
+    if max_regenerations <= 0 and max_retries <= 0:
+        logger.info(f"No retry or regeneration attempts left for {func_name}. Skipping...")
+        if source_name not in all_error_funcs_content:
+            all_error_funcs_content[source_name] = {}
+        all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
+        shutil.rmtree(tmp_dir)
+        return
+    debug(f"Prompt length: {len(prompt)}")
+    response = generate_response(prompt, llm_model)
+    if response == "上下文长度超过限制":
+        if source_name not in all_error_funcs_content:
+            all_error_funcs_content[source_name] = {}
+        all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
+        shutil.rmtree(tmp_dir)
+        return
+    debug(response)
+    text_remove = response.replace("```rust", "").replace("```", "")
+    template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""
 
     retry_count = 0
     regenerate_count = 0
@@ -199,7 +210,11 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 debug(f"Prompt length: {len(prompt1)}")
 
                 response = generate_response(prompt1+warning,llm_model,min(retry_count * 0.02, 0.2)).replace("```rust", "").replace("```", "")
+                if response == "上下文长度超过限制":
+                    retry_count = max_retries
+                    continue
                 debug(response)
+
                 response_non_function_content, response_function_content_dict, _ = deduplicate_code(response,tmp_dir)
                 temp_non_function_content, temp_function_content_dict, _ = deduplicate_code(template,tmp_dir)
 
@@ -318,7 +333,8 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
                 results_copy = copy.deepcopy(results)
                 
                 temp_results = {k: v for k, v in function_content_dict.items() if data_manager.get_source_name_by_func_name(k) in all_files}
-                extra_content = '\n'.join(v for k, v in function_content_dict.items() if k not in temp_results and k != 'main')
+                # extra_content = '\n'.join(v for k, v in function_content_dict.items() if k not in temp_results and k != 'main')
+                extra_content = {k:v for k, v in function_content_dict.items() if k not in temp_results and k != 'main'}
                 for k, v in temp_results.items():
                     _, _, i = data_manager.get_content(k)
                     name = source_names[i]
@@ -336,7 +352,38 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
 
                 if results_copy[source_name].get(func_name, '') == '':
                     results_copy[source_name][func_name] = ''
-                results_copy[source_name][func_name] += extra_content
+
+                
+                # results_copy[source_name][func_name] += extra_content
+
+                # 遍历 extra_content 中的每一项
+                for func_key, func_value in extra_content.items():
+                    added_to_existing = False
+                    
+                    # 在 results 中查找包含此函数内容的位置
+                    for source_key, source_dict in results.items():
+                        for result_func_key, result_func_value in source_dict.items():
+                            if func_value.strip() in result_func_value:
+                                # 确保 results_copy 中有对应的结构
+                                if source_key not in results_copy:
+                                    results_copy[source_key] = {}
+                                if result_func_key not in results_copy[source_key]:
+                                    results_copy[source_key][result_func_key] = result_func_value
+                                
+                                # 添加函数内容（避免重复）
+                                if func_value.strip() not in results_copy[source_key][result_func_key]:
+                                    results_copy[source_key][result_func_key] += '\n' + func_value
+                                
+                                added_to_existing = True
+                                break
+                        if added_to_existing:
+                            break
+                    
+                    # 如果没有找到对应位置，添加到当前函数
+                    if not added_to_existing:
+                        if results_copy[source_name].get(func_name, '') == '':
+                            results_copy[source_name][func_name] = ''
+                        results_copy[source_name][func_name] += '\n' + func_value
 
                 if func_name in data_manager.all_pointer_funcs:
                     results_copy[source_name][func_name] = temp_results[func_name].replace('\n', f'\n{data_manager.comment}', 1)
@@ -457,6 +504,13 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
             logger.info(f"Failed to compile {func_name} after {max_retries} attempts. Regenerating code...")
             debug(f"Prompt length: {len(prompt)}")
             response = generate_response(prompt,llm_model,0.1 * regenerate_count)
+            if response == "上下文长度超过限制":
+                if source_name not in all_error_funcs_content:
+                    all_error_funcs_content[source_name] = {}
+                all_error_funcs_content[source_name][func_name] =   '//上下文长度超过限制' 
+                shutil.rmtree(tmp_dir)
+                debug(response)
+                return
             debug(response)
             text_remove = response.replace("```rust", "").replace("```", "")
             template = f"""{child_context}\n\n{text_remove}\n\n{"fn main(){}" if func_name != 'main' else ''}"""

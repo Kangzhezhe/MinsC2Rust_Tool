@@ -8,6 +8,13 @@ from tqdm import tqdm
 from run_tests import run_tests_and_calculate_rates
 import pandas as pd
 
+def is_test_name_valid(test_source_name, test_names):
+    if test_source_name in test_names:
+        return True
+    # 检查去掉uncovered前缀后的名称
+    normalized_name = test_source_name.replace('test_uncovered_', 'test_')
+    return normalized_name in test_names
+
 def get_source_path(source, src_names,output_project_path):
     if source in src_names:
         return f"{output_project_path}/src/{source.replace('-','_')}.rs"
@@ -81,7 +88,9 @@ def calculate_tests_pass_rates(output_project_path, output_dir,results, sorted_f
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
         pass_counts = 0
         fail_counts = 0
-        if test_source_name not in results:
+        # if test_source_name not in results:
+        #     continue
+        if not is_test_name_valid(test_source_name, results.keys()):
             continue
         for func_name in funcs:
             if func_name in passed_tests:
@@ -142,6 +151,9 @@ def calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_m
         total_filtered_funcs = 0
         missing_count = 0
         missing_filtered_count = 0
+
+        if not is_test_name_valid(test_source_name, results.keys()):
+            continue
         
         for func_name in funcs:
             if func_name not in flattened_results:
@@ -267,8 +279,8 @@ def calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_
     once_pass_rate = {}
     once_pass_counts = {}
     for test_source_name, child_sources in tqdm(include_dict.items()):
-        # if test_source_name not in test_names or test_source_name not in once_retry_count_dict:
-        #     continue
+        if not is_test_name_valid(test_source_name, test_names) or test_source_name not in once_retry_count_dict:
+            continue
         
         pass_counts = 0
         fail_counts = 0
@@ -325,6 +337,8 @@ def calculate_loc_statistics(output_dir, results, sorted_funcs_depth, data_manag
     source_data = {}
 
     for test_source_name, funcs in tqdm(sorted_funcs_depth.items()):
+        if not is_test_name_valid(test_source_name, results.keys()):
+            continue
         data_manager.get_include_indices(test_source_name)
         
         total_loc = 0

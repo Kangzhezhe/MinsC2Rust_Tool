@@ -13,7 +13,7 @@ from models.llm_model import generate_response
 from metrics import calculate_compile_pass_rates, calculate_retry_pass_rates, calculate_tests_pass_rates,calculate_asserts_count,calculate_loc_statistics, merge_results
 from merge_c_h import process_files
 from utils import deduplicate_code, run_command, update_test_timeout,parse_and_deduplicate_errors,Memory
-from prompts import generate_extra_prompt,fix_extra_prompt, get_json_parsing_fix_prompt
+from prompts import generate_extra_prompt,fix_extra_prompt, generate_extra_prompt_fix, get_json_parsing_fix_prompt
 from logger import logger_init
 from clang_callgraph import clang_callgraph
 from src.data_manager import DataManager
@@ -148,7 +148,7 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     
     # return
 
-    # # 工程结构重构
+    # 工程结构重构
     # if not eval_only:
     #     all_source_names = set()
     #     lib_rs_path = f'{output_project_path}/src/lib.rs'
@@ -419,11 +419,11 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                             first_line = sub_value.lstrip().split('\n', 1)[0]
                             first_lines[child][sub_key] = first_line
                         else:
-                            first_lines[child][sub_key] = f'注意： 该函数已经{child}文件中实现，直接导入，不要重复定义'
+                            first_lines[child][sub_key] = f'在{child}文件中，直接导入'
 
         prompt = generate_extra_prompt(first_lines, source, child_source, all_child_func_list)
-        
-        response = generate_response(prompt, llm_model, temperature=0)
+
+        response = generate_response(prompt, llm_model, temperature=0,max_prompt_length=35000)
         template = response.replace("```rust", "").replace("```", "")
 
         with open(src_output_path, 'w') as file:
@@ -435,10 +435,11 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
         max_regenerations = 3
         while test_error.count("error") > 1:
             print(test_error)
-            prompt_fix = fix_extra_prompt(prompt, response, source, child_source, parse_and_deduplicate_errors(test_error))
+            prompt1 = generate_extra_prompt_fix(first_lines, source, child_source, all_child_func_list, parse_and_deduplicate_errors(test_error))
+            prompt_fix = fix_extra_prompt(prompt1, response, source, child_source, parse_and_deduplicate_errors(test_error))
             print(f"##################################################################################################")
             print(f"Prompt length: {len(prompt_fix)}")
-            response = generate_response(prompt_fix, llm_model, temperature=0)
+            response = generate_response(prompt_fix, llm_model, temperature=0,max_prompt_length=35000)
             response = response.replace("```json\n", "").replace("\n```", "").replace("```json", "").replace("```", "")
             
             print(response)
@@ -470,7 +471,7 @@ def post_process_source(data_manager, source, child_source, results, src_names, 
                 if regenerations >= max_regenerations:
                     raise Exception(f"达到最大重试次数，请手动修改{source}文件的编译错误然后重新运行")
                 print("Reached maximum attempts, regenerating template.")
-                response = generate_response(prompt, llm_model, temperature=0)
+                response = generate_response(prompt, llm_model, temperature=0,max_prompt_length=35000)
                 template = response.replace("```rust", "").replace("```", "")
                 with open(src_output_path, 'w') as file:
                     file.write(template + content)

@@ -255,7 +255,8 @@ def parse_and_deduplicate_errors(error_str):
     # 对错误类型进行去重，并生成去重后的字符串
     unique_errors = []
     for error_type, error_content in error_dict.items():
-        unique_errors.append(f"{error_type}\n{error_content}")
+        # unique_errors.append(f"{error_type}\n{error_content}")
+        unique_errors.append(f"{error_type}")
 
     return '\n\n'.join(unique_errors)
 

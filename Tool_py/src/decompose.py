@@ -69,7 +69,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         # shutil.rmtree(tmp_dir)
         # return
 
-    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in results.get(source_name, {}) or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
+    if i == -1 or func_name == 'main' or func_name == 'extra' or func_name in ['run_test', 'run_tests'] or func_name in all_error_funcs_content.get(source_name, {}):
         return
 
     if func_name.startswith('test_'):
@@ -134,7 +134,7 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         {function_unit}
         """
         print("len of prompt:", len(prompt))
-        response = generate_response(prompt,llm_model=llm_model)
+        response = generate_response(prompt,llm_model=llm_model,max_prompt_length=35000)
         text_remove = response.replace("```c", "").replace("```", "")
         function_unit = text_remove
         with open(file_path, 'w') as f:
@@ -143,6 +143,12 @@ def process_func(test_source_name, func_name, depth, start_time, source_names, f
         delete_file_if_exists('temp')
         print(f"{function_unit}\n{compile_error}")
         retry += 1
+
+    if compile_error and retry >= max_retry:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"编译失败达到最大重试次数({max_retry})，已删除文件: {file_path}")
+
 
     return  results, all_error_funcs_content, once_retry_count_dict
 
@@ -306,7 +312,6 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
 
     parallel_groups = get_parallel_groups(test_names, data_manager,sorted_funcs_depth,funcs_childs)
     merged_set = set.union(*parallel_groups)
-
     # 并行处理每个 test_source_name
     for group in [merged_set]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=params['num_threads']) as executor:
@@ -323,10 +328,62 @@ def parallel_process(sorted_funcs_depth, funcs_childs, source_names, results, da
 
     return results, once_retry_count_dict, all_error_funcs_content, total_retry_count, total_regenerate_count, total_error_count
 
+def move_uncovered_files(tmp_dir):
+    """
+    将所有 uncovered 目录下的 .c 文件移动到对应的主目录下，然后删除 uncovered 目录
+    """
+    units_dir = os.path.join(tmp_dir, 'units')
+    if not os.path.exists(units_dir):
+        return
+    
+    # 获取所有目录
+    directories = [d for d in os.listdir(units_dir) if os.path.isdir(os.path.join(units_dir, d))]
+    
+    for directory in directories:
+        if directory.startswith('test_uncovered_'):
+            # 找到对应的主目录
+            main_dir_name = directory.replace('test_uncovered_', 'test_')
+            uncovered_dir_path = os.path.join(units_dir, directory)
+            main_dir_path = os.path.join(units_dir, main_dir_name)
+            
+            # 如果主目录存在
+            if os.path.exists(main_dir_path):
+                print(f"正在处理目录: {directory} -> {main_dir_name}")
+                # 移动所有 .c 文件
+                for filename in os.listdir(uncovered_dir_path):
+                    if filename.endswith('.c'):
+                        source_file = os.path.join(uncovered_dir_path, filename)
+                        target_file = os.path.join(main_dir_path, filename)
+                        
+                        # 如果目标文件不存在，则移动文件
+                        if not os.path.exists(target_file):
+                            try:
+                                shutil.move(source_file, target_file)
+                                print(f"已移动文件: {filename}")
+                            except Exception as e:
+                                print(f"移动文件失败: {filename}, 错误: {e}")
+                        else:
+                            print(f"目标文件已存在，跳过: {filename}")
+                
+                # 移动完成后，强制删除整个 uncovered 目录
+                try:
+                    shutil.rmtree(uncovered_dir_path)
+                    print(f"已删除目录: {directory}")
+                except OSError as e:
+                    print(f"删除目录失败: {directory}, 错误: {e}")
+            else:
+                print(f"主目录不存在: {main_dir_name}")
+                # 即使主目录不存在，也删除 uncovered 目录
+                try:
+                    shutil.rmtree(uncovered_dir_path)
+                    print(f"主目录不存在，已删除 uncovered 目录: {directory}")
+                except OSError as e:
+                    print(f"删除目录失败: {directory}, 错误: {e}")
+
 
 async def main():
     if len(sys.argv) != 2:
-        print("Usage: python main_multi.py <config_path>")
+        print("Usage: python decompose.py <config_path>")
         sys.exit(1)
     config_path = sys.argv[1]
     cfg = read_config(config_path)
@@ -338,6 +395,7 @@ async def main():
     # llm_model = "deepseek"
     # llm_model = "gpt4o"
     # llm_model = "claude"
+    
     include_dict,all_file_paths = process_files(compile_commands_path, tmp_dir)
     test_path = os.listdir(os.path.join(tmp_dir, 'test_json'))
     test_path = [os.path.join(tmp_dir, 'test_json', f) for f in test_path]
@@ -356,11 +414,24 @@ async def main():
     sorted_funcs_depth,funcs_childs,include_dict,include_dict_without_fn_pointer,all_pointer_funcs = clang_callgraph(compile_commands_path,include_dict,all_file_paths,has_test=has_test)
     logger = logger_init(os.path.join(output_dir,'app.log'))
 
+    # 处理 uncovered 测试用例
+    uncovered_test_names = []
+    for key in include_dict.keys():
+        if key.startswith('test-uncovered_'):
+            # 提取对应的源文件名
+            source_file = key.replace('test-uncovered_', '')
+            # 只有当对应的源文件不在排除列表中时，才添加 uncovered 测试
+            if source_file not in excluded_files:
+                uncovered_test_names.append(key)
+
+    # 将 uncovered 测试名称添加到 test_names 中
+    test_names.extend(uncovered_test_names)
+
     if not has_test:
         for test_name in test_names:
             include_dict[test_name]=src_names
 
-
+    # 处理排除文件
     files_to_remove = []
     
     for file in excluded_files:
@@ -369,19 +440,24 @@ async def main():
         elif file in test_names:
             files_to_remove.append(os.path.join(tmp_dir, f'test_json/{file}.json'))
 
-
     for file in files_to_remove:
         if file in source_path:
             source_path.remove(file)
     source_names = [os.path.splitext(os.path.basename(f))[0] for f in source_path]
 
+    # 加载JSON数据
     data = []
     for f in source_path:
         with open(f, 'r') as file:
             data.append(json.load(file))
 
+    # 将 uncovered 测试名称添加到 source_names 中
+    source_names.extend(uncovered_test_names)
+
+    # 初始化数据管理器
     data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test)   
 
+    # 初始化结果和计数器
     results = {}
     start_time = time.time()
     total_retry_count = 0
@@ -392,37 +468,27 @@ async def main():
     once_retry_count_dict = defaultdict(dict)
     results = defaultdict(dict)
 
-    data_manager = DataManager(source_path,include_dict=include_dict,all_pointer_funcs=all_pointer_funcs,include_dict_without_fn_pointer=include_dict_without_fn_pointer,has_test=has_test)   
+    # 加载检查点
+    results, once_retry_count_dict, all_error_funcs_content = load_checkpoint(output_dir, results, once_retry_count_dict, all_error_funcs_content)
 
-
-    results = {}
-    start_time = time.time()
-    total_retry_count = 0
-    total_regenerate_count = 0
-    total_error_count = 0
-    total_error_funcs = []
-    all_error_funcs_content = defaultdict(dict) 
-    once_retry_count_dict = defaultdict(dict)
-    results = defaultdict(dict)
-
-
-
+    # 并行处理
     results,once_retry_count_dict,all_error_funcs_content,total_retry_count, total_regenerate_count, total_error_count = parallel_process(
         sorted_funcs_depth, funcs_childs, source_names, results, data_manager, logger, llm_model, tmp_dir, output_dir,all_error_funcs_content,once_retry_count_dict,test_names,params
     )
 
-
+    # 计算总时间
     end_time = time.time()
     elapsed_time = end_time - start_time
     hours, remainder = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(remainder, 60)
     logger.info(f"Total time taken for conversion :{int(hours):02}:{int(minutes):02}:{int(seconds):02} seconds, Total retry count: {total_retry_count}, Total regenerate count: {total_regenerate_count},Total error count:{total_error_count}, Total error funcs:{total_error_funcs}") 
 
-    calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_manager)
-    calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
+    move_uncovered_files(tmp_dir)
+    # 计算统计数据
+    # calculate_compile_pass_rates(output_dir, results, sorted_funcs_depth, data_manager)
+    # calculate_retry_pass_rates(output_dir,results,include_dict,once_retry_count_dict,test_names)
 
     # post_process(data_manager, output_dir, output_project_path, src_names, test_names, funcs_childs, include_dict, sorted_funcs_depth, llm_model)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

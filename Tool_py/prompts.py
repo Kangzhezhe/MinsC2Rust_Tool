@@ -179,7 +179,7 @@ def get_task_prompt(non_function_content, first_lines):
 def get_json_fixing_prompt(task_prompt,response, compile_error2):
     return f"""
         {task_prompt}
-        上一次返回的extra代码分割的内容有编译错误，请修复以下json字符串中的extra分割错误并返回正确的json格式：
+        上一次返回的extra代码分割的内容有编译错误，请修复以下json字符串中的extra分割错误并返回正确的json格式，删除rust代码中无关的中文符号：
         {response}。
         编译时出现以下错误，请重新插入extra，不要添加除了给定rust全局定义之外的其他代码，不要对返回结果做任何解释：
         {compile_error2}
@@ -203,6 +203,30 @@ def generate_extra_prompt(first_lines, source, child_source, all_child_func_list
 返回格式为{source}的所有非函数部分代码，不要返回任何其他的代码，不要对结果做任何解释。extra字段的值是导入模块语句，全局变量，结构体定义、宏等，不包含任何如函数函数声明或定义。
 """
 
+def generate_extra_prompt_fix(first_lines, source, child_source, all_child_func_list, test_error):
+    filtered_first_lines = {}
+    for file_key, functions_dict in first_lines.items():
+        filtered_functions = {'extra': functions_dict.get('extra', '')}
+        
+        for func_name, func_def in functions_dict.items():
+            if func_name == 'extra':
+                continue
+            # 直接判断函数名是否在错误信息中出现
+            if func_name in test_error:
+                filtered_functions[func_name] = func_def
+        
+        # 只有当有相关函数时才保留这个文件
+        if len(filtered_functions) > 1 or filtered_functions.get('extra', '').strip():
+            filtered_first_lines[file_key] = filtered_functions
+
+    return f"""
+{filtered_first_lines}
+我有一个results.json，第一维的key是文件名，第二维的key是函数名，‘extra’的第二维key是文件内的全局非函数定义。
+文件调用关系是{source}调用了{child_source}。
+请补充{source}的extra部分，{source}用到的子函数有：{all_child_func_list}，使用use的外部导入方式use test_project::{child_source}.replace('-', '_')::{{用到的函数：{all_child_func_list}；其他用到的函数，其他用到的结构体，全局变量，宏定义}}。
+导入{source}需要的所有元素，包括函数和全局定义，{source}文件不需要额外实现任何定义，只需要从外部导入。
+返回格式为{source}的所有非函数部分代码，不要返回任何其他的代码，不要对结果做任何解释。extra字段的值是导入模块语句，全局变量，结构体定义、宏等，不包含任何如函数函数声明或定义。
+"""
 
 def fix_extra_prompt(prompt, response, source, child_source, test_error):
     return f"""
@@ -223,4 +247,5 @@ extra字段不要出现任何函数如fn func(){{...}}，我的子文件中的�
     "file1": {{"extra": "导入模块语句，声明为pub的全局变量，结构体定义、宏等，注意：不包含任何函数定义或表达式，实现trait时不需要pub,如果出现redefine的报错，删除这个字段中出现的函数定义" }}
 }}
 {source}的extra不要出现其他文件file1中相同的任何定义，确保所有的定义都是唯一的，不要出现重复定义，只修改作用域与导入模块，不定义任何函数，结构体，全局变量。
+如果extra出现错误的特殊字符如中文符号，请删除这些特殊字符。
 """
