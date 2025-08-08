@@ -149,27 +149,27 @@ def post_process(data_manager, output_dir, output_project_path, src_names, test_
     # return
 
     # 工程结构重构
-    # if not eval_only:
-    #     all_source_names = set()
-    #     lib_rs_path = f'{output_project_path}/src/lib.rs'
-    #     if os.path.exists(lib_rs_path):
-    #         with open(lib_rs_path, 'r') as f:
-    #             for line in f:
-    #                 all_source_names.add(line.strip())
-    #     for source in results.keys():
-    #         if source in test_names:
-    #             _, all_include_files = data_manager.get_include_indices(source)
-    #             funcs_child = funcs_childs[source]
-    #             for include_file in all_include_files:
-    #                 if include_file in src_names and include_file in results:
-    #                     all_source_names.add(f"pub mod {include_file.replace('-', '_')};")
-    #                     child_source = include_dict.get(include_file, [])
-    #                     post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
-    #             with open(lib_rs_path, 'w') as f:
-    #                 f.write('\n'.join(all_source_names))
-    #                 f.write('\n')
-    #             child_source = include_dict.get(source, [])
-    #             post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
+    if not eval_only:
+        all_source_names = set()
+        lib_rs_path = f'{output_project_path}/src/lib.rs'
+        if os.path.exists(lib_rs_path):
+            with open(lib_rs_path, 'r') as f:
+                for line in f:
+                    all_source_names.add(line.strip())
+        for source in results.keys():
+            if source in test_names:
+                _, all_include_files = data_manager.get_include_indices(source)
+                funcs_child = funcs_childs[source]
+                for include_file in all_include_files:
+                    if include_file in src_names and include_file in results:
+                        all_source_names.add(f"pub mod {include_file.replace('-', '_')};")
+                        child_source = include_dict.get(include_file, [])
+                        post_process_source(data_manager, include_file, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
+                with open(lib_rs_path, 'w') as f:
+                    f.write('\n'.join(all_source_names))
+                    f.write('\n')
+                child_source = include_dict.get(source, [])
+                post_process_source(data_manager, source, child_source, results, src_names, test_names, funcs_child, output_project_path, llm_model)
 
 
     # with open(os.path.join(output_dir, 'results.json'), 'w') as f:
