@@ -330,6 +330,14 @@ def get_c_filepaths(directory_path, is_test=False):
     
     return c_filepaths
 
+def get_path_suffix(file_path, depth=2):
+    """获取路径的最后depth个层级"""
+    parts = file_path.split('/')
+    if len(parts) >= depth:
+        return '/'.join(parts[-depth:])
+    return file_path
+
+
 def get_c_functions_name(c_path, unprocess_path, compile_commands_path, is_test=False):
     #找到文件夹下的所有的.c文件
     # filenames = get_c_filenames("/home/mins01/project/c-algorithms/src")
@@ -357,7 +365,17 @@ def get_c_functions_name(c_path, unprocess_path, compile_commands_path, is_test=
         filepath_basename_map[basename] = file
     
     for file in filepaths:
+        # functions_list = list(FILE_FUNCTIONS.get(file, []))
+        # 使用路径的最后两个层级作为键
+        file_key = get_path_suffix(file, 2)
         functions_list = list(FILE_FUNCTIONS.get(file, []))
+        
+        # 如果直接匹配失败，尝试在FILE_FUNCTIONS中查找匹配的路径
+        if not functions_list:
+            for full_path in FILE_FUNCTIONS.keys():
+                if get_path_suffix(full_path, 2) == file_key:
+                    functions_list = list(FILE_FUNCTIONS.get(full_path, []))
+                    break
         
         # 检查是否有对应的.h文件中的函数定义
         basename = os.path.splitext(os.path.basename(file))[0]
